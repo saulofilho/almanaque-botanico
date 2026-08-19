@@ -12,16 +12,25 @@ import {
   AlertCircle, 
   Sparkles, 
   BookOpen,
-  X
+  X,
+  Scissors,
+  Activity,
+  Layers
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { UserPlant, PlantEntry } from "../types";
+import { GardenHealthChart } from "./GardenHealthChart";
+import { FertilizationCalendar } from "./FertilizationCalendar";
+import { HarvestCalendar } from "./HarvestCalendar";
+import { getPlantHarvestRecommendation } from "../utils/harvestPlanner";
 
 interface MyGardenViewProps {
   garden: UserPlant[];
   onWaterPlant: (plantId: string) => void;
   onRemovePlant: (plantId: string) => void;
   onUpdateNotes: (plantId: string, notes: string) => void;
+  onUpdateStatus?: (plantId: string, newStatus: UserPlant["estadoSaude"]) => void;
+  onUpdateFertilizationDate?: (plantId: string, dateIso: string) => void;
   onAddNewCustomPlant: (newPlant: Omit<UserPlant, "id">) => void;
   allSpecies: PlantEntry[];
   onSelectPlantModal: (plant: PlantEntry) => void;
@@ -32,6 +41,8 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
   onWaterPlant,
   onRemovePlant,
   onUpdateNotes,
+  onUpdateStatus,
+  onUpdateFertilizationDate,
   onAddNewCustomPlant,
   allSpecies,
   onSelectPlantModal,
@@ -39,6 +50,8 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingPlantId, setEditingPlantId] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState("");
+  const [wateringFilter, setWateringFilter] = useState<"all" | "urgent" | "ok">("all");
+  const [activeSubView, setActiveSubView] = useState<"plantas" | "colheitas" | "adubacao" | "vitalidade">("plantas");
 
   // New Plant Form State
   const [formData, setFormData] = useState({
@@ -111,17 +124,58 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
 
   const getWateringStatus = (plant: UserPlant) => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const lastWatered = new Date(plant.ultimaRega);
-    const diffTime = Math.abs(today.getTime() - lastWatered.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    lastWatered.setHours(0, 0, 0, 0);
+    const diffTime = today.getTime() - lastWatered.getTime();
+    const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
     const daysRemaining = plant.frequenciaDiasRega - diffDays;
+    const hydrationPct = Math.max(
+      0,
+      Math.min(100, Math.round(((plant.frequenciaDiasRega - diffDays) / (plant.frequenciaDiasRega || 1)) * 100))
+    );
 
     if (diffDays === 0) {
-      return { text: "Regada hoje ✓", isUrgent: false, isToday: true };
-    } else if (daysRemaining <= 0) {
-      return { text: `Rega necessária! (há ${diffDays} dias)`, isUrgent: true, isToday: false };
+      return {
+        text: "Regada hoje ✓",
+        isUrgent: false,
+        isToday: true,
+        diffDays,
+        daysRemaining: plant.frequenciaDiasRega,
+        hydrationPct: 100,
+        severity: "ok" as const,
+      };
+    } else if (daysRemaining < 0) {
+      const daysOverdue = Math.abs(daysRemaining);
+      return {
+        text: `Rega atrasada! (${daysOverdue} dia${daysOverdue > 1 ? "s" : ""} de atraso)`,
+        isUrgent: true,
+        isToday: false,
+        diffDays,
+        daysRemaining,
+        hydrationPct: 0,
+        severity: "critical" as const,
+      };
+    } else if (daysRemaining === 0) {
+      return {
+        text: "Rega necessária hoje!",
+        isUrgent: true,
+        isToday: false,
+        diffDays,
+        daysRemaining: 0,
+        hydrationPct: 15,
+        severity: "due" as const,
+      };
     } else {
-      return { text: `Próxima rega em ${daysRemaining} dia(s)`, isUrgent: false, isToday: false };
+      return {
+        text: `Próxima rega em ${daysRemaining} dia${daysRemaining > 1 ? "s" : ""}`,
+        isUrgent: false,
+        isToday: false,
+        diffDays,
+        daysRemaining,
+        hydrationPct,
+        severity: "ok" as const,
+      };
     }
   };
 
@@ -134,6 +188,32 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
       colors: ["#4588ba", "#6ebbe6", "#a8ddf5"],
     });
   };
+
+  const handleWaterAllUrgent = () => {
+    const urgentList = garden.filter((p) => getWateringStatus(p).isUrgent);
+    urgentList.forEach((p) => onWaterPlant(p.id));
+    confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ["#3b82f6", "#60a5fa", "#93c5fd", "#bbf7d0"],
+    });
+  };
+
+  const urgentPlants = garden.filter((p) => getWateringStatus(p).isUrgent);
+  const urgentCount = urgentPlants.length;
+  const okCount = garden.length - urgentCount;
+
+  const harvestRecommendations = garden.map((p) => getPlantHarvestRecommendation(p, allSpecies));
+  const readyToHarvestCount = harvestRecommendations.filter((r) => r.isHarvestable && r.currentMoonIsOptimal && r.isMature).length;
+  const totalHarvestableCount = harvestRecommendations.filter((r) => r.isHarvestable).length;
+
+  const filteredGarden = garden.filter((plant) => {
+    const st = getWateringStatus(plant);
+    if (wateringFilter === "urgent") return st.isUrgent;
+    if (wateringFilter === "ok") return !st.isUrgent;
+    return true;
+  });
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -151,7 +231,7 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
             </h1>
 
             <p className="text-sm sm:text-base text-[#d8cfbe] font-narrative leading-relaxed">
-              Monitore a rotina de rega, datas de plantio, histórico de podas e anotações de crescimento de todas as espécies que você cuida.
+              Monitore a rotina de rega, datas de plantio, histórico de podas, nutrição do solo e datas ideais de colheita medicinal.
             </p>
           </div>
 
@@ -164,6 +244,75 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Garden Sub-Navigation Bar */}
+      {garden.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 bg-[#f0ebd9] p-1.5 rounded-2xl border border-[#ded4be] shadow-2xs">
+          <button
+            onClick={() => setActiveSubView("plantas")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              activeSubView === "plantas"
+                ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+                : "text-[#544834] hover:bg-[#e4dcce]"
+            }`}
+          >
+            <Sprout className={`w-4 h-4 ${activeSubView === "plantas" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+            <span>Minhas Plantas</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              activeSubView === "plantas" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+            }`}>
+              {garden.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubView("colheitas")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              activeSubView === "colheitas"
+                ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+                : "text-[#544834] hover:bg-[#e4dcce]"
+            }`}
+          >
+            <Scissors className={`w-4 h-4 ${activeSubView === "colheitas" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+            <span>Colheitas Lunares</span>
+            {readyToHarvestCount > 0 ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#e5ca78] text-[#33240d] animate-pulse">
+                {readyToHarvestCount} hoje!
+              </span>
+            ) : totalHarvestableCount > 0 ? (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                activeSubView === "colheitas" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+              }`}>
+                {totalHarvestableCount}
+              </span>
+            ) : null}
+          </button>
+
+          <button
+            onClick={() => setActiveSubView("adubacao")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              activeSubView === "adubacao"
+                ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+                : "text-[#544834] hover:bg-[#e4dcce]"
+            }`}
+          >
+            <Calendar className={`w-4 h-4 ${activeSubView === "adubacao" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+            <span>Adubação & Solo</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubView("vitalidade")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              activeSubView === "vitalidade"
+                ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+                : "text-[#544834] hover:bg-[#e4dcce]"
+            }`}
+          >
+            <Activity className={`w-4 h-4 ${activeSubView === "vitalidade" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+            <span>Monitor de Saúde</span>
+          </button>
+        </div>
+      )}
 
       {/* Empty State */}
       {garden.length === 0 ? (
@@ -183,72 +332,225 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
           </button>
         </div>
       ) : (
-        /* Garden Plant Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {garden.map((plant) => {
-            const status = getWateringStatus(plant);
-            const isEditing = editingPlantId === plant.id;
-            const originalSpecimen = plant.especieId
-              ? allSpecies.find((s) => s.id === plant.especieId)
-              : null;
+        <>
+          {/* SubView: Colheitas Lunares */}
+          {activeSubView === "colheitas" && (
+            <HarvestCalendar
+              garden={garden}
+              allSpecies={allSpecies}
+              onSelectPlantModal={onSelectPlantModal}
+              onUpdateNotes={onUpdateNotes}
+            />
+          )}
 
-            return (
-              <div
-                key={plant.id}
-                className="bg-[#faf7f2] rounded-3xl border border-[#ded5c2] overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
-              >
-                {/* Header Image Plate */}
-                <div className="relative h-48 bg-[#ebe4d3] overflow-hidden">
-                  <img
-                    src={
-                      plant.imagemUrl ||
-                      "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80"
-                    }
-                    alt={plant.nomePersonalizado}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80";
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+          {/* SubView: Adubação Sazonal */}
+          {activeSubView === "adubacao" && (
+            <FertilizationCalendar
+              garden={garden}
+              allSpecies={allSpecies}
+              onUpdateFertilizationDate={onUpdateFertilizationDate}
+            />
+          )}
 
-                  {/* Health State Badge */}
-                  <div className="absolute top-3 left-3">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        plant.estadoSaude === "Vigorosa"
-                          ? "bg-[#254d24]/90 text-[#bce8b7] border border-[#3e753c]"
-                          : plant.estadoSaude === "Estável"
-                          ? "bg-[#453c25]/90 text-[#e8dbb7] border border-[#6b5d3a]"
-                          : "bg-[#542823]/90 text-[#f5bfb8] border border-[#7d3f37]"
-                      }`}
-                    >
-                      ● {plant.estadoSaude}
-                    </span>
+          {/* SubView: Vitalidade e Gráficos */}
+          {activeSubView === "vitalidade" && (
+            <GardenHealthChart garden={garden} onUpdatePlantStatus={onUpdateStatus} />
+          )}
+
+          {/* SubView: Minhas Plantas (Default) */}
+          {activeSubView === "plantas" && (
+            <div className="space-y-8 animate-fadeIn">
+              {/* Recharts Health State Evolution & Distribution Monitor */}
+              <GardenHealthChart garden={garden} onUpdatePlantStatus={onUpdateStatus} />
+
+              {/* Urgent Watering Visual Alert Banner */}
+              {urgentCount > 0 && (
+                <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-[#fae8e4] via-[#fdf2f0] to-[#f7dfdb] border-2 border-[#e07565] shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fadeIn">
+                  <div className="flex items-start sm:items-center gap-3.5">
+                    <div className="p-3 rounded-2xl bg-[#c93b28] text-white shrink-0 shadow-sm animate-bounce">
+                      <Droplets className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-cinzel text-xs font-bold uppercase tracking-widest text-[#8c2214]">
+                          Aviso de Irrigação Pendente
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#c93b28] text-white">
+                          {urgentCount} {urgentCount === 1 ? "planta" : "plantas"}
+                        </span>
+                      </div>
+                      <h3 className="font-serif-botanic text-lg sm:text-xl font-bold text-[#451610]">
+                        {urgentCount === 1
+                          ? "Uma planta do seu herbanário precisa de rega urgente hoje!"
+                          : `${urgentCount} plantas do seu herbanário atingiram ou ultrapassaram o ciclo de rega!`}
+                      </h3>
+                      <p className="text-xs text-[#733026] font-narrative">
+                        Mantenha a hidratação das raízes para preservar o vigor celular e a absorção de nutrientes.
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => onRemovePlant(plant.id)}
-                    className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 hover:bg-[#852c21] text-white transition-colors cursor-pointer"
-                    title="Remover do herbanário"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Plant Names */}
-                  <div className="absolute bottom-3 left-3 right-3 text-[#fbf8f2]">
-                    <h3 className="font-serif-botanic text-2xl font-bold leading-tight">
-                      {plant.nomePersonalizado}
-                    </h3>
-                    {plant.nomeCientifico && (
-                      <p className="text-xs text-[#dcd2be] font-narrative italic">
-                        {plant.nomeCientifico}
-                      </p>
-                    )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={handleWaterAllUrgent}
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#c93b28] hover:bg-[#a82a19] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:scale-105 cursor-pointer whitespace-nowrap"
+                    >
+                      <Droplets className="w-4 h-4" />
+                      <span>Regar Todas ({urgentCount})</span>
+                    </button>
                   </div>
                 </div>
+              )}
+
+              {/* Section Heading & Watering Filter Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                <div>
+                  <h2 className="font-serif-botanic text-2xl font-bold text-[#1f2e1f]">
+                    Espécimes Plantados ({garden.length})
+                  </h2>
+                  <p className="text-xs text-[#6e624e] font-narrative">
+                    Acompanhe as regas, nível de hidratação e anotações de manejo diário.
+                  </p>
+                </div>
+
+                {/* Watering Status Filter Pills */}
+                <div className="flex items-center gap-1.5 bg-[#ede4d2] p-1 rounded-2xl border border-[#d6ccb8] self-start sm:self-auto">
+                  <button
+                    onClick={() => setWateringFilter("all")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      wateringFilter === "all"
+                        ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+                        : "text-[#594d3a] hover:bg-[#ded4be]"
+                    }`}
+                  >
+                    Todas ({garden.length})
+                  </button>
+                  <button
+                    onClick={() => setWateringFilter("urgent")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                      wateringFilter === "urgent"
+                        ? "bg-[#c93b28] text-white shadow-xs"
+                        : "text-[#8c291c] hover:bg-[#fad8d3]"
+                    }`}
+                  >
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>Regas Pendentes ({urgentCount})</span>
+                  </button>
+                  <button
+                    onClick={() => setWateringFilter("ok")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      wateringFilter === "ok"
+                        ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+                        : "text-[#594d3a] hover:bg-[#ded4be]"
+                    }`}
+                  >
+                    Hidratadas ({okCount})
+                  </button>
+                </div>
+              </div>
+
+          {/* Garden Plant Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredGarden.map((plant) => {
+              const status = getWateringStatus(plant);
+              const isEditing = editingPlantId === plant.id;
+              const originalSpecimen = plant.especieId
+                ? allSpecies.find((s) => s.id === plant.especieId)
+                : null;
+
+              return (
+                <div
+                  key={plant.id}
+                  className={`bg-[#faf7f2] rounded-3xl overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col justify-between ${
+                    status.isUrgent
+                      ? "border-2 border-[#d9534f] ring-3 ring-[#d9534f]/20 shadow-md shadow-[#d9534f]/10"
+                      : "border border-[#ded5c2]"
+                  }`}
+                >
+                  {/* Header Image Plate */}
+                  <div className="relative h-48 bg-[#ebe4d3] overflow-hidden">
+                    <img
+                      src={
+                        plant.imagemUrl ||
+                        "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80"
+                      }
+                      alt={plant.nomePersonalizado}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+
+                    {/* Health State Badge / Select */}
+                    <div className="absolute top-3 left-3">
+                      {onUpdateStatus ? (
+                        <select
+                          value={plant.estadoSaude}
+                          onChange={(e) =>
+                            onUpdateStatus(plant.id, e.target.value as UserPlant["estadoSaude"])
+                          }
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer border focus:outline-hidden backdrop-blur-md ${
+                            plant.estadoSaude === "Vigorosa"
+                              ? "bg-[#254d24]/90 text-[#bce8b7] border-[#3e753c]"
+                              : plant.estadoSaude === "Estável"
+                              ? "bg-[#453c25]/90 text-[#e8dbb7] border-[#6b5d3a]"
+                              : "bg-[#542823]/90 text-[#f5bfb8] border-[#7d3f37]"
+                          }`}
+                          title="Alterar estado de saúde"
+                        >
+                          <option value="Vigorosa" className="bg-[#254d24] text-white">● Vigorosa</option>
+                          <option value="Estável" className="bg-[#453c25] text-white">● Estável</option>
+                          <option value="Necessita Atenção" className="bg-[#542823] text-white">● Necessita Atenção</option>
+                          <option value="Em Recuperação" className="bg-[#214354] text-white">● Em Recuperação</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            plant.estadoSaude === "Vigorosa"
+                              ? "bg-[#254d24]/90 text-[#bce8b7] border border-[#3e753c]"
+                              : plant.estadoSaude === "Estável"
+                              ? "bg-[#453c25]/90 text-[#e8dbb7] border border-[#6b5d3a]"
+                              : "bg-[#542823]/90 text-[#f5bfb8] border border-[#7d3f37]"
+                          }`}
+                        >
+                          ● {plant.estadoSaude}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Urgent Watering Warning Badge Over Image */}
+                    {status.isUrgent && (
+                      <div className="absolute top-3 right-12">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d93829] text-white border border-[#ff8f82] shadow-sm flex items-center gap-1 animate-pulse">
+                          <Droplets className="w-3 h-3" />
+                          Rega Urgente
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => onRemovePlant(plant.id)}
+                      className="absolute top-3 right-3 p-1.5 rounded-full bg-black/50 hover:bg-[#852c21] text-white transition-colors cursor-pointer"
+                      title="Remover do herbanário"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Plant Names */}
+                    <div className="absolute bottom-3 left-3 right-3 text-[#fbf8f2]">
+                      <h3 className="font-serif-botanic text-2xl font-bold leading-tight">
+                        {plant.nomePersonalizado}
+                      </h3>
+                      {plant.nomeCientifico && (
+                        <p className="text-xs text-[#dcd2be] font-narrative italic">
+                          {plant.nomeCientifico}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
                 {/* Plant Card Body */}
                 <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
@@ -265,16 +567,31 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                       </span>
                     </div>
 
-                    {/* Watering Status Pill & Quick Water Button */}
-                    <div className="p-3.5 rounded-2xl bg-[#f2ece0] border border-[#ded5c2] flex items-center justify-between gap-3">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#706450] block">
-                          Status de Rega
-                        </span>
+                    {/* Hydration Bar & Watering Status Card */}
+                    <div
+                      className={`p-3.5 rounded-2xl space-y-2 border transition-all ${
+                        status.isUrgent
+                          ? "bg-[#faeee9] border-[#e89082]"
+                          : "bg-[#f2ece0] border-[#ded5c2]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Droplets
+                            className={`w-4 h-4 ${
+                              status.isUrgent
+                                ? "text-[#c93b28] animate-bounce"
+                                : "text-[#2e7d32]"
+                            }`}
+                          />
+                          <span className="text-[11px] font-bold tracking-wider uppercase font-cinzel text-[#4a3f2d]">
+                            {status.isUrgent ? "Alerta de Rega" : "Ciclo de Rega"}
+                          </span>
+                        </div>
                         <span
-                          className={`text-xs font-semibold ${
+                          className={`text-xs font-bold ${
                             status.isUrgent
-                              ? "text-[#a32e1f] font-bold animate-pulse"
+                              ? "text-[#c93b28] animate-pulse"
                               : "text-[#2a4d28]"
                           }`}
                         >
@@ -282,17 +599,46 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => handleWaterClick(plant.id)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
-                          status.isToday
-                            ? "bg-[#d8edd3] text-[#1c401d]"
-                            : "bg-[#2b688c] hover:bg-[#1f506e] text-white"
-                        }`}
-                      >
-                        <Droplets className="w-3.5 h-3.5" />
-                        <span>Regar</span>
-                      </button>
+                      {/* Soil Hydration Progress Meter */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-[#706450] font-mono">
+                          <span>Umidade do substrato estimada</span>
+                          <span className="font-bold">{status.hydrationPct}%</span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-[#dfd4be] overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-500 rounded-full ${
+                              status.hydrationPct <= 20
+                                ? "bg-[#c93b28]"
+                                : status.hydrationPct <= 50
+                                ? "bg-[#d4a017]"
+                                : "bg-[#367d39]"
+                            }`}
+                            style={{ width: `${status.hydrationPct}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 text-[10px] text-[#7a6d59]">
+                        <span>Frequência: a cada {plant.frequenciaDiasRega} dias</span>
+                        <span>Última rega: {new Date(plant.ultimaRega).toLocaleDateString("pt-BR")}</span>
+                      </div>
+
+                      <div className="pt-2">
+                        <button
+                          onClick={() => handleWaterClick(plant.id)}
+                          className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-95 ${
+                            status.isUrgent
+                              ? "bg-[#c93b28] hover:bg-[#a82a19] text-white shadow-md"
+                              : status.isToday
+                              ? "bg-[#d8edd3] text-[#1c401d]"
+                              : "bg-[#2b688c] hover:bg-[#1f506e] text-white"
+                          }`}
+                        >
+                          <Droplets className="w-4 h-4" />
+                          <span>{status.isToday ? "Regada hoje ✓ (Regar Novamente)" : "Regar Agora"}</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Notes & Journaling */}
@@ -349,7 +695,10 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
               </div>
             );
           })}
+          </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Add New Plant Modal */}

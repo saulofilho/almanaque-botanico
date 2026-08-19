@@ -40,6 +40,12 @@ export interface LunarPhaseInfo {
   proverbio: string;
 }
 
+export interface HealthLogEntry {
+  data: string; // "YYYY-MM-DD"
+  estadoSaude: "Vigorosa" | "Estável" | "Necessita Atenção" | "Em Recuperação";
+  nota?: string;
+}
+
 export interface UserPlant {
   id: string;
   nomePersonalizado: string;
@@ -48,8 +54,10 @@ export interface UserPlant {
   dataPlantio: string;
   ultimaRega: string;
   frequenciaDiasRega: number;
+  ultimaAdubacao?: string;
   localizacao: string; // Ex: "Varanda Sul", "Jardim de Inverno", "Cozinha"
   estadoSaude: "Vigorosa" | "Estável" | "Necessita Atenção" | "Em Recuperação";
+  historicoSaude?: HealthLogEntry[];
   anotacoes: string;
   imagemUrl?: string;
 }

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PlantEntry } from "../types";
 import { CATEGORIES } from "../data/plants";
+import { DailyTip } from "./DailyTip";
 
 interface EncyclopediaViewProps {
   plants: PlantEntry[];
@@ -210,6 +211,9 @@ export const EncyclopediaView: React.FC<EncyclopediaViewProps> = ({
           </form>
         </div>
       </div>
+
+      {/* Dica do Dia & Seasonal Botanical Wisdom */}
+      <DailyTip plants={plants} onSelectPlant={onSelectPlant} />
 
       {/* Search & Filter Controls */}
       <div className="bg-[#f5efe3] p-5 sm:p-6 rounded-2xl border border-[#ded5c2] shadow-xs space-y-4">

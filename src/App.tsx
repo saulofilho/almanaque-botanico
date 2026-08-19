@@ -7,9 +7,11 @@ import { ApothecaryView } from "./components/ApothecaryView";
 import { MyGardenView } from "./components/MyGardenView";
 import { BotanistChatView } from "./components/BotanistChatView";
 import { PlantModal } from "./components/PlantModal";
+import { OnboardingModal, STORAGE_KEY_ONBOARDING } from "./components/OnboardingModal";
+import { WallpaperGallery } from "./components/WallpaperGallery";
 import { BOTANICAL_PLANTS } from "./data/plants";
 import { PlantEntry, UserPlant } from "./types";
-import { Sprout, Heart, Leaf, ShieldCheck, Moon, Sparkles } from "lucide-react";
+import { Sprout, Heart, Leaf, ShieldCheck, Moon, Sparkles, Compass, Image as ImageIcon } from "lucide-react";
 import confetti from "canvas-confetti";
 
 const STORAGE_KEY_GARDEN = "almanaque_botanico_my_garden_v1";
@@ -60,6 +62,15 @@ const INITIAL_GARDEN_PLANTS: UserPlant[] = [
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>("enciclopedia");
   const [selectedPlantForModal, setSelectedPlantForModal] = useState<PlantEntry | null>(null);
+  const [isWallpapersOpen, setIsWallpapersOpen] = useState<boolean>(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
+    try {
+      const completed = localStorage.getItem(STORAGE_KEY_ONBOARDING);
+      return !completed; // Open by default if not completed yet
+    } catch {
+      return false;
+    }
+  });
 
   // Catalog State
   const [plantsCatalog, setPlantsCatalog] = useState<PlantEntry[]>(() => {
@@ -180,6 +191,20 @@ export default function App() {
     showToast("📝 Anotação de manejo salva!");
   };
 
+  const handleUpdatePlantStatus = (plantId: string, newStatus: UserPlant["estadoSaude"]) => {
+    setGarden((prev) =>
+      prev.map((p) => (p.id === plantId ? { ...p, estadoSaude: newStatus } : p))
+    );
+    showToast(`Estado de saúde atualizado para "${newStatus}"!`);
+  };
+
+  const handleUpdateFertilizationDate = (plantId: string, dateIso: string) => {
+    setGarden((prev) =>
+      prev.map((p) => (p.id === plantId ? { ...p, ultimaAdubacao: dateIso } : p))
+    );
+    showToast("🍂 Adubação registrada com sucesso!");
+  };
+
   const handleAddNewCustomPlant = (newPlantData: Omit<UserPlant, "id">) => {
     const newPlant: UserPlant = {
       ...newPlantData,
@@ -212,6 +237,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         gardenCount={garden.length}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
+        onOpenWallpapers={() => setIsWallpapersOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -237,7 +264,12 @@ export default function App() {
           />
         )}
 
-        {activeTab === "botica" && <ApothecaryView />}
+        {activeTab === "botica" && (
+          <ApothecaryView
+            plants={plantsCatalog}
+            onSelectPlantModal={(plant) => setSelectedPlantForModal(plant)}
+          />
+        )}
 
         {activeTab === "meujardim" && (
           <MyGardenView
@@ -245,6 +277,8 @@ export default function App() {
             onWaterPlant={handleWaterPlant}
             onRemovePlant={handleRemovePlant}
             onUpdateNotes={handleUpdateNotes}
+            onUpdateStatus={handleUpdatePlantStatus}
+            onUpdateFertilizationDate={handleUpdateFertilizationDate}
             onAddNewCustomPlant={handleAddNewCustomPlant}
             allSpecies={plantsCatalog}
             onSelectPlantModal={(plant) => setSelectedPlantForModal(plant)}
@@ -263,6 +297,22 @@ export default function App() {
           isInGarden={gardenPlantIds.has(selectedPlantForModal.id)}
         />
       )}
+
+      {/* Interactive Onboarding Tour Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onNavigateTab={(tab) => {
+          setActiveTab(tab);
+          setIsOnboardingOpen(false);
+        }}
+      />
+
+      {/* Botanical Wallpaper Gallery Modal */}
+      <WallpaperGallery
+        isOpen={isWallpapersOpen}
+        onClose={() => setIsWallpapersOpen(false)}
+      />
 
       {/* Toast Notification */}
       {toastMessage && (
@@ -289,7 +339,21 @@ export default function App() {
             </p>
           </div>
 
-          <div className="flex items-center gap-6 text-xs text-[#b8ab92]">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-4 text-xs text-[#b8ab92]">
+            <button
+              onClick={() => setIsWallpapersOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2b422d] hover:bg-[#38553a] text-[#f0f7ec] border border-[#486b4a] transition-all cursor-pointer font-medium shadow-2xs"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-[#a4d495]" />
+              <span>Wallpapers Botânicos</span>
+            </button>
+            <button
+              onClick={() => setIsOnboardingOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#283e29] hover:bg-[#345136] text-[#e0eed9] border border-[#3f5f41] transition-all cursor-pointer font-medium"
+            >
+              <Compass className="w-3.5 h-3.5 text-[#91c584]" />
+              <span>Guia do Usuário</span>
+            </button>
             <button
               onClick={() => setActiveTab("enciclopedia")}
               className="hover:text-[#f7f3e8] transition-colors cursor-pointer"
@@ -313,6 +377,12 @@ export default function App() {
               className="hover:text-[#f7f3e8] transition-colors cursor-pointer"
             >
               Botica & Chás
+            </button>
+            <button
+              onClick={() => setActiveTab("meujardim")}
+              className="hover:text-[#f7f3e8] transition-colors cursor-pointer"
+            >
+              Meu Herbanário
             </button>
           </div>
         </div>

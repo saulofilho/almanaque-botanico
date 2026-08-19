@@ -14,8 +14,10 @@ import {
   Compass,
   Sprout
 } from "lucide-react";
-import { HerbalRecipe } from "../types";
+import { HerbalRecipe, PlantEntry } from "../types";
 import { HERBAL_RECIPES } from "../data/recipes";
+import { BOTANICAL_PLANTS } from "../data/plants";
+import { PropertyDictionary } from "./PropertyDictionary";
 
 const RECIPE_CATEGORIES = [
   "Todas",
@@ -25,7 +27,15 @@ const RECIPE_CATEGORIES = [
   "Jardim & Solo"
 ] as const;
 
-export const ApothecaryView: React.FC = () => {
+interface ApothecaryViewProps {
+  plants?: PlantEntry[];
+  onSelectPlantModal?: (plant: PlantEntry) => void;
+}
+
+export const ApothecaryView: React.FC<ApothecaryViewProps> = ({
+  plants = BOTANICAL_PLANTS,
+  onSelectPlantModal,
+}) => {
   const [recipes, setRecipes] = useState<HerbalRecipe[]>(HERBAL_RECIPES);
   const [selectedCategory, setSelectedCategory] = useState<string>("Todas");
   const [activeRecipe, setActiveRecipe] = useState<HerbalRecipe | null>(null);
@@ -195,6 +205,12 @@ export const ApothecaryView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Dicionário de Propriedades Medicinais & Métodos de Extração */}
+      <PropertyDictionary
+        plants={plants}
+        onSelectPlantModal={onSelectPlantModal}
+      />
 
       {/* Category Pills for Curated Recipes */}
       <div className="space-y-4">

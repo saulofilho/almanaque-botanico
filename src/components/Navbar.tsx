@@ -7,7 +7,9 @@ import {
   HeartHandshake, 
   BookOpen, 
   MessageSquareQuote,
-  Sun
+  Sun,
+  Compass,
+  Image as ImageIcon
 } from "lucide-react";
 import { getAstronomicalMoonPhase } from "../data/lunarData";
 
@@ -17,12 +19,16 @@ interface NavbarProps {
   activeTab: NavTab;
   setActiveTab: (tab: NavTab) => void;
   gardenCount: number;
+  onOpenOnboarding?: () => void;
+  onOpenWallpapers?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   gardenCount,
+  onOpenOnboarding,
+  onOpenWallpapers,
 }) => {
   const moonInfo = getAstronomicalMoonPhase();
 
@@ -117,11 +123,55 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               );
             })}
+
+            {onOpenWallpapers && (
+              <button
+                onClick={onOpenWallpapers}
+                id="btn-open-wallpapers"
+                title="Abrir Galeria de Wallpapers Artísticos"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-[#544835] hover:text-[#284229] hover:bg-[#e4ddcd] transition-all ml-1 border-l border-[#ded5c2] pl-2.5 cursor-pointer"
+              >
+                <ImageIcon className="w-4 h-4 text-[#8a7657]" />
+                <span className="font-cinzel text-[11px]">Wallpapers</span>
+              </button>
+            )}
+
+            {onOpenOnboarding && (
+              <button
+                onClick={onOpenOnboarding}
+                id="btn-open-onboarding"
+                title="Abrir Guia Interativo do Almanaque"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-[#544835] hover:text-[#284229] hover:bg-[#e4ddcd] transition-all cursor-pointer"
+              >
+                <Compass className="w-4 h-4 text-[#8a7657]" />
+                <span className="font-cinzel text-[11px]">Guia</span>
+              </button>
+            )}
           </nav>
         </div>
 
         {/* Mobile Nav Scrollable Strip */}
         <div className="flex lg:hidden overflow-x-auto py-2 gap-1.5 scrollbar-none border-t border-[#e8e2d4]">
+          {onOpenWallpapers && (
+            <button
+              onClick={onOpenWallpapers}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#e8e0ce] text-[#4d402e] border border-[#d6cbba] whitespace-nowrap flex-shrink-0"
+              title="Galeria de Wallpapers"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-[#284229]" />
+              <span>Wallpapers</span>
+            </button>
+          )}
+          {onOpenOnboarding && (
+            <button
+              onClick={onOpenOnboarding}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#e8e0ce] text-[#4d402e] border border-[#d6cbba] whitespace-nowrap flex-shrink-0"
+              title="Abrir Guia do Usuário"
+            >
+              <Compass className="w-3.5 h-3.5 text-[#284229]" />
+              <span>Guia</span>
+            </button>
+          )}
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
