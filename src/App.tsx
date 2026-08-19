@@ -9,6 +9,7 @@ import { BotanistChatView } from "./components/BotanistChatView";
 import { PlantModal } from "./components/PlantModal";
 import { OnboardingModal, STORAGE_KEY_ONBOARDING } from "./components/OnboardingModal";
 import { WallpaperGallery } from "./components/WallpaperGallery";
+import { BotanicalWeatherWidget } from "./components/BotanicalWeatherWidget";
 import { BOTANICAL_PLANTS } from "./data/plants";
 import { PlantEntry, UserPlant } from "./types";
 import { Sprout, Heart, Leaf, ShieldCheck, Moon, Sparkles, Compass, Image as ImageIcon } from "lucide-react";
