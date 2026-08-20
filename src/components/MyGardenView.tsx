@@ -24,6 +24,7 @@ import { GardenHealthChart } from "./GardenHealthChart";
 import { FertilizationCalendar } from "./FertilizationCalendar";
 import { HarvestCalendar } from "./HarvestCalendar";
 import { PlantingBedPlanner } from "./PlantingBedPlanner";
+import { PlantGrowthStageIndicator, PlantGrowthImageBadge } from "./PlantGrowthStageIndicator";
 import { getPlantHarvestRecommendation } from "../utils/harvestPlanner";
 
 interface MyGardenViewProps {
@@ -371,7 +372,12 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
 
       {/* SubView: Vitalidade e Gráficos */}
       {activeSubView === "vitalidade" && (
-        <GardenHealthChart garden={garden} onUpdatePlantStatus={onUpdateStatus} />
+        <GardenHealthChart 
+          garden={garden} 
+          allSpecies={allSpecies}
+          onUpdatePlantStatus={onUpdateStatus}
+          onUpdateFertilizationDate={onUpdateFertilizationDate}
+        />
       )}
 
       {/* SubView: Minhas Plantas (Default) */}
@@ -394,8 +400,13 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
           </div>
         ) : (
             <div className="space-y-8 animate-fadeIn">
-              {/* Recharts Health State Evolution & Distribution Monitor */}
-              <GardenHealthChart garden={garden} onUpdatePlantStatus={onUpdateStatus} />
+              {/* Recharts Health State & Fertilization Line Chart Monitor */}
+              <GardenHealthChart 
+                garden={garden} 
+                allSpecies={allSpecies}
+                onUpdatePlantStatus={onUpdateStatus}
+                onUpdateFertilizationDate={onUpdateFertilizationDate}
+              />
 
               {/* Urgent Watering Visual Alert Banner */}
               {urgentCount > 0 && (
@@ -554,16 +565,6 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                       )}
                     </div>
 
-                    {/* Urgent Watering Warning Badge Over Image */}
-                    {status.isUrgent && (
-                      <div className="absolute top-3 right-12">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d93829] text-white border border-[#ff8f82] shadow-sm flex items-center gap-1 animate-pulse">
-                          <Droplets className="w-3 h-3" />
-                          Rega Urgente
-                        </span>
-                      </div>
-                    )}
-
                     {/* Delete Button */}
                     <button
                       onClick={() => onRemovePlant(plant.id)}
@@ -572,6 +573,17 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
+
+                    {/* Growth Stage Badge Over Image */}
+                    <div className="absolute top-3 right-12 flex items-center gap-1.5">
+                      <PlantGrowthImageBadge dataPlantio={plant.dataPlantio} />
+                      {status.isUrgent && (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#d93829] text-white border border-[#ff8f82] shadow-sm flex items-center gap-1 animate-pulse">
+                          <Droplets className="w-3 h-3" />
+                          Rega Urgente
+                        </span>
+                      )}
+                    </div>
 
                     {/* Plant Names */}
                     <div className="absolute bottom-3 left-3 right-3 text-[#fbf8f2]">
@@ -600,6 +612,13 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                         Desde {new Date(plant.dataPlantio).toLocaleDateString("pt-BR")}
                       </span>
                     </div>
+
+                    {/* Animated Botanical Growth Stage Indicator */}
+                    <PlantGrowthStageIndicator
+                      dataPlantio={plant.dataPlantio}
+                      plantSpecies={originalSpecimen}
+                      nomePlanta={plant.nomePersonalizado}
+                    />
 
                     {/* Hydration Bar & Watering Status Card */}
                     <div
