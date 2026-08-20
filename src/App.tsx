@@ -243,7 +243,14 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+        {/* Real-time Weather & Botanical Frost/Heat Alerts Widget */}
+        <BotanicalWeatherWidget
+          garden={garden}
+          allSpecies={plantsCatalog}
+          onOpenGardenTab={() => setActiveTab("meujardim")}
+        />
+
         {activeTab === "enciclopedia" && (
           <EncyclopediaView
             plants={plantsCatalog}
@@ -268,6 +275,7 @@ export default function App() {
         {activeTab === "botica" && (
           <ApothecaryView
             plants={plantsCatalog}
+            garden={garden}
             onSelectPlantModal={(plant) => setSelectedPlantForModal(plant)}
           />
         )}

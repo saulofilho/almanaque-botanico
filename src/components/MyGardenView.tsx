@@ -15,13 +15,15 @@ import {
   X,
   Scissors,
   Activity,
-  Layers
+  Layers,
+  Ruler
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { UserPlant, PlantEntry } from "../types";
 import { GardenHealthChart } from "./GardenHealthChart";
 import { FertilizationCalendar } from "./FertilizationCalendar";
 import { HarvestCalendar } from "./HarvestCalendar";
+import { PlantingBedPlanner } from "./PlantingBedPlanner";
 import { getPlantHarvestRecommendation } from "../utils/harvestPlanner";
 
 interface MyGardenViewProps {
@@ -51,7 +53,7 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
   const [editingPlantId, setEditingPlantId] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState("");
   const [wateringFilter, setWateringFilter] = useState<"all" | "urgent" | "ok">("all");
-  const [activeSubView, setActiveSubView] = useState<"plantas" | "colheitas" | "adubacao" | "vitalidade">("plantas");
+  const [activeSubView, setActiveSubView] = useState<"plantas" | "colheitas" | "planejador" | "adubacao" | "vitalidade">("plantas");
 
   // New Plant Form State
   const [formData, setFormData] = useState({
@@ -246,119 +248,151 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
       </div>
 
       {/* Garden Sub-Navigation Bar */}
-      {garden.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 bg-[#f0ebd9] p-1.5 rounded-2xl border border-[#ded4be] shadow-2xs">
-          <button
-            onClick={() => setActiveSubView("plantas")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              activeSubView === "plantas"
-                ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
-                : "text-[#544834] hover:bg-[#e4dcce]"
-            }`}
-          >
-            <Sprout className={`w-4 h-4 ${activeSubView === "plantas" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
-            <span>Minhas Plantas</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              activeSubView === "plantas" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
-            }`}>
-              {garden.length}
+      <div className="flex flex-wrap items-center gap-2 bg-[#f0ebd9] p-1.5 rounded-2xl border border-[#ded4be] shadow-2xs">
+        <button
+          onClick={() => setActiveSubView("plantas")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "plantas"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Sprout className={`w-4 h-4 ${activeSubView === "plantas" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Minhas Plantas</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            activeSubView === "plantas" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+          }`}>
+            {garden.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubView("colheitas")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "colheitas"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Scissors className={`w-4 h-4 ${activeSubView === "colheitas" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Colheitas Lunares</span>
+          {readyToHarvestCount > 0 ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#e5ca78] text-[#33240d] animate-pulse">
+              {readyToHarvestCount} hoje!
             </span>
-          </button>
+          ) : totalHarvestableCount > 0 ? (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              activeSubView === "colheitas" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+            }`}>
+              {totalHarvestableCount}
+            </span>
+          ) : null}
+        </button>
 
-          <button
-            onClick={() => setActiveSubView("colheitas")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              activeSubView === "colheitas"
-                ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
-                : "text-[#544834] hover:bg-[#e4dcce]"
-            }`}
-          >
-            <Scissors className={`w-4 h-4 ${activeSubView === "colheitas" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
-            <span>Colheitas Lunares</span>
-            {readyToHarvestCount > 0 ? (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#e5ca78] text-[#33240d] animate-pulse">
-                {readyToHarvestCount} hoje!
-              </span>
-            ) : totalHarvestableCount > 0 ? (
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                activeSubView === "colheitas" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
-              }`}>
-                {totalHarvestableCount}
-              </span>
-            ) : null}
-          </button>
+        <button
+          onClick={() => setActiveSubView("planejador")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "planejador"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Ruler className={`w-4 h-4 ${activeSubView === "planejador" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Planejador de Canteiros</span>
+        </button>
 
-          <button
-            onClick={() => setActiveSubView("adubacao")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              activeSubView === "adubacao"
-                ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
-                : "text-[#544834] hover:bg-[#e4dcce]"
-            }`}
-          >
-            <Calendar className={`w-4 h-4 ${activeSubView === "adubacao" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
-            <span>Adubação & Solo</span>
-          </button>
+        <button
+          onClick={() => setActiveSubView("adubacao")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "adubacao"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Calendar className={`w-4 h-4 ${activeSubView === "adubacao" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Adubação & Solo</span>
+        </button>
 
-          <button
-            onClick={() => setActiveSubView("vitalidade")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              activeSubView === "vitalidade"
-                ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
-                : "text-[#544834] hover:bg-[#e4dcce]"
-            }`}
-          >
-            <Activity className={`w-4 h-4 ${activeSubView === "vitalidade" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
-            <span>Monitor de Saúde</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setActiveSubView("vitalidade")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "vitalidade"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Activity className={`w-4 h-4 ${activeSubView === "vitalidade" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Monitor de Saúde</span>
+        </button>
+      </div>
+
+      {/* SubViews Rendering */}
+      {/* SubView: Colheitas Lunares */}
+      {activeSubView === "colheitas" && (
+        <HarvestCalendar
+          garden={garden}
+          allSpecies={allSpecies}
+          onSelectPlantModal={onSelectPlantModal}
+          onUpdateNotes={onUpdateNotes}
+        />
       )}
 
-      {/* Empty State */}
-      {garden.length === 0 ? (
-        <div className="text-center py-16 bg-[#f7f2e7] rounded-3xl border border-[#ded5c2] p-8 space-y-4">
-          <Sprout className="w-14 h-14 text-[#8a7c64] mx-auto opacity-70" />
-          <h3 className="font-serif-botanic text-2xl sm:text-3xl font-bold text-[#3d3527]">
-            Seu herbanário ainda está vazio
-          </h3>
-          <p className="text-sm text-[#665a45] max-w-md mx-auto font-narrative">
-            Explore a <strong>Enciclopédia Botânica</strong> para adicionar espécies ao seu jardim ou clique no botão acima para cadastrar sua primeira planta!
-          </p>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-6 py-3 rounded-xl bg-[#284229] hover:bg-[#1b2f1c] text-[#f7f4ee] text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Adicionar Minha Primeira Planta
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* SubView: Colheitas Lunares */}
-          {activeSubView === "colheitas" && (
-            <HarvestCalendar
-              garden={garden}
-              allSpecies={allSpecies}
-              onSelectPlantModal={onSelectPlantModal}
-              onUpdateNotes={onUpdateNotes}
-            />
-          )}
+      {/* SubView: Planejador de Canteiros & Espaçamento */}
+      {activeSubView === "planejador" && (
+        <PlantingBedPlanner
+          allSpecies={allSpecies}
+          garden={garden}
+          onAddPlannedPlantToGarden={(plant, notes) => {
+            onAddNewCustomPlant({
+              nomePersonalizado: plant.nomePopular,
+              especieId: plant.id,
+              nomeCientifico: plant.nomeCientifico,
+              dataPlantio: new Date().toISOString().split("T")[0],
+              ultimaRega: new Date().toISOString().split("T")[0],
+              frequenciaDiasRega: 4,
+              localizacao: "Canteiro Planejado",
+              estadoSaude: "Vigorosa",
+              anotacoes: notes || `Espaçamento calculado no planejador de canteiros.`,
+              imagemUrl: plant.imagemUrl,
+            });
+          }}
+          onSelectPlantModal={onSelectPlantModal}
+        />
+      )}
 
-          {/* SubView: Adubação Sazonal */}
-          {activeSubView === "adubacao" && (
-            <FertilizationCalendar
-              garden={garden}
-              allSpecies={allSpecies}
-              onUpdateFertilizationDate={onUpdateFertilizationDate}
-            />
-          )}
+      {/* SubView: Adubação Sazonal */}
+      {activeSubView === "adubacao" && (
+        <FertilizationCalendar
+          garden={garden}
+          allSpecies={allSpecies}
+          onUpdateFertilizationDate={onUpdateFertilizationDate}
+        />
+      )}
 
-          {/* SubView: Vitalidade e Gráficos */}
-          {activeSubView === "vitalidade" && (
-            <GardenHealthChart garden={garden} onUpdatePlantStatus={onUpdateStatus} />
-          )}
+      {/* SubView: Vitalidade e Gráficos */}
+      {activeSubView === "vitalidade" && (
+        <GardenHealthChart garden={garden} onUpdatePlantStatus={onUpdateStatus} />
+      )}
 
-          {/* SubView: Minhas Plantas (Default) */}
-          {activeSubView === "plantas" && (
+      {/* SubView: Minhas Plantas (Default) */}
+      {activeSubView === "plantas" && (
+        garden.length === 0 ? (
+          <div className="text-center py-16 bg-[#f7f2e7] rounded-3xl border border-[#ded5c2] p-8 space-y-4">
+            <Sprout className="w-14 h-14 text-[#8a7c64] mx-auto opacity-70" />
+            <h3 className="font-serif-botanic text-2xl sm:text-3xl font-bold text-[#3d3527]">
+              Seu herbanário ainda está vazio
+            </h3>
+            <p className="text-sm text-[#665a45] max-w-md mx-auto font-narrative">
+              Explore a <strong>Enciclopédia Botânica</strong> para adicionar espécies ao seu jardim ou clique no botão acima para cadastrar sua primeira planta!
+            </p>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-6 py-3 rounded-xl bg-[#284229] hover:bg-[#1b2f1c] text-[#f7f4ee] text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Adicionar Minha Primeira Planta
+            </button>
+          </div>
+        ) : (
             <div className="space-y-8 animate-fadeIn">
               {/* Recharts Health State Evolution & Distribution Monitor */}
               <GardenHealthChart garden={garden} onUpdatePlantStatus={onUpdateStatus} />
@@ -697,9 +731,7 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
           })}
           </div>
         </div>
-      )}
-        </>
-      )}
+      ))}
 
       {/* Add New Plant Modal */}
       {isAddModalOpen && (

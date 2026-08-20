@@ -12,12 +12,15 @@ import {
   Check, 
   Loader2, 
   Compass,
-  Sprout
+  Sprout,
+  CupSoda,
+  Library
 } from "lucide-react";
-import { HerbalRecipe, PlantEntry } from "../types";
+import { HerbalRecipe, PlantEntry, UserPlant } from "../types";
 import { HERBAL_RECIPES } from "../data/recipes";
 import { BOTANICAL_PLANTS } from "../data/plants";
 import { PropertyDictionary } from "./PropertyDictionary";
+import { GardenTeaRecommender } from "./GardenTeaRecommender";
 
 const RECIPE_CATEGORIES = [
   "Todas",
@@ -29,16 +32,19 @@ const RECIPE_CATEGORIES = [
 
 interface ApothecaryViewProps {
   plants?: PlantEntry[];
+  garden?: UserPlant[];
   onSelectPlantModal?: (plant: PlantEntry) => void;
 }
 
 export const ApothecaryView: React.FC<ApothecaryViewProps> = ({
   plants = BOTANICAL_PLANTS,
+  garden = [],
   onSelectPlantModal,
 }) => {
   const [recipes, setRecipes] = useState<HerbalRecipe[]>(HERBAL_RECIPES);
   const [selectedCategory, setSelectedCategory] = useState<string>("Todas");
   const [activeRecipe, setActiveRecipe] = useState<HerbalRecipe | null>(null);
+  const [boticaSubSection, setBoticaSubSection] = useState<"chas-jardim" | "caderno-receitas" | "consultor-ia" | "dicionario">("chas-jardim");
 
   // AI Fitotherapy Advisor State
   const [userGoalInput, setUserGoalInput] = useState("");
@@ -99,217 +105,298 @@ export const ApothecaryView: React.FC<ApothecaryViewProps> = ({
         </div>
       </div>
 
-      {/* AI Herbalist Formulator Box */}
-      <div className="bg-[#f5efe3] p-6 sm:p-8 rounded-3xl border border-[#ded5c2] shadow-xs space-y-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#284229] flex items-center justify-center text-[#9ed38f]">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="font-serif-botanic text-xl sm:text-2xl font-bold text-[#1f2e1f]">
-              Consultor de Fitoterapia & Misturas de Ervas com IA
-            </h2>
-            <p className="text-xs text-[#6e624e] font-narrative">
-              Diga o que você sente ou o que deseja tratar para receber formulações personalizadas com dosagem segura.
-            </p>
-          </div>
-        </div>
+      {/* Sub-Navigation Bar for Apothecary */}
+      <div className="flex flex-wrap items-center gap-2 bg-[#f0ebd9] p-1.5 rounded-2xl border border-[#ded4be] shadow-2xs">
+        <button
+          onClick={() => setBoticaSubSection("chas-jardim")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            boticaSubSection === "chas-jardim"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <CupSoda className={`w-4 h-4 ${boticaSubSection === "chas-jardim" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Chás do Meu Jardim</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            boticaSubSection === "chas-jardim" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+          }`}>
+            Recomendador
+          </span>
+        </button>
 
-        <form onSubmit={handleGenerateCustomBlend} className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="text"
-              placeholder="Ex: 'Insônia com agitação noturna', 'Digestão pesada e azia', 'Biofertilizante para floração de orquídeas'..."
-              value={userGoalInput}
-              onChange={(e) => setUserGoalInput(e.target.value)}
-              className="flex-1 px-4 py-3 rounded-xl bg-[#faf7f2] border border-[#d6ccb8] text-sm text-[#2c3328] placeholder-[#968b75] focus:outline-hidden focus:ring-2 focus:ring-[#406343]"
-            />
-            <button
-              type="submit"
-              disabled={isGeneratingBlend || !userGoalInput.trim()}
-              className="px-6 py-3 rounded-xl bg-[#284229] hover:bg-[#1a2f1b] disabled:opacity-50 text-[#f7f5ee] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap shadow-xs"
-            >
-              {isGeneratingBlend ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-[#a4d495]" />
-                  <span>Formulando Elixir...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-[#a4d495]" />
-                  <span>Formular Receita Botânica</span>
-                </>
-              )}
-            </button>
-          </div>
-          {aiError && (
-            <p className="text-xs text-[#b83b27] font-medium">⚠️ {aiError}</p>
-          )}
-        </form>
+        <button
+          onClick={() => setBoticaSubSection("caderno-receitas")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            boticaSubSection === "caderno-receitas"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <BookOpen className={`w-4 h-4 ${boticaSubSection === "caderno-receitas" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Caderno de Fórmulas</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            boticaSubSection === "caderno-receitas" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+          }`}>
+            {recipes.length}
+          </span>
+        </button>
 
-        {/* AI Custom Blend Output */}
-        {customAiBlendResult && (
-          <div className="mt-6 p-6 rounded-2xl bg-[#faf7f2] border-2 border-[#3c633a] space-y-6 animate-fadeIn">
+        <button
+          onClick={() => setBoticaSubSection("consultor-ia")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            boticaSubSection === "consultor-ia"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Sparkles className={`w-4 h-4 ${boticaSubSection === "consultor-ia" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Consultor IA</span>
+        </button>
+
+        <button
+          onClick={() => setBoticaSubSection("dicionario")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            boticaSubSection === "dicionario"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Library className={`w-4 h-4 ${boticaSubSection === "dicionario" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Dicionário Terapêutico</span>
+        </button>
+      </div>
+
+      {/* SubSection 1: Chás Recomendados do Jardim */}
+      {boticaSubSection === "chas-jardim" && (
+        <GardenTeaRecommender
+          garden={garden}
+          allSpecies={plants}
+          onSelectPlantModal={onSelectPlantModal}
+        />
+      )}
+
+      {/* SubSection 2: Consultor Fitoterápico com IA */}
+      {boticaSubSection === "consultor-ia" && (
+        <div className="bg-[#f5efe3] p-6 sm:p-8 rounded-3xl border border-[#ded5c2] shadow-xs space-y-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#284229] flex items-center justify-center text-[#9ed38f]">
+              <Sparkles className="w-4 h-4" />
+            </div>
             <div>
-              <span className="text-[11px] font-bold font-cinzel uppercase tracking-wider text-[#355e32] block">
-                Prescrição Fitoterápica Personalizada
-              </span>
-              <h3 className="font-serif-botanic text-2xl font-bold text-[#1a2b1b] mt-1">
-                {userGoalInput}
-              </h3>
-              <p className="text-xs text-[#524837] font-narrative italic mt-1 leading-relaxed">
-                {customAiBlendResult.visaoGeral}
+              <h2 className="font-serif-botanic text-xl sm:text-2xl font-bold text-[#1f2e1f]">
+                Consultor de Fitoterapia & Misturas de Ervas com IA
+              </h2>
+              <p className="text-xs text-[#6e624e] font-narrative">
+                Diga o que você sente ou o que deseja tratar para receber formulações personalizadas com dosagem segura.
               </p>
             </div>
+          </div>
 
-            <div className="space-y-4">
-              {customAiBlendResult.receitas?.map((rec: any, i: number) => (
-                <div
-                  key={i}
-                  className="p-4 rounded-xl bg-[#f5efe3] border border-[#ded5c2] space-y-2"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h4 className="font-semibold text-sm text-[#1e2e1f]">
-                      🍵 {rec.nome}
-                    </h4>
-                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#ebe1ce] text-[#544834] font-medium">
-                      {rec.tipo}
+          <form onSubmit={handleGenerateCustomBlend} className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="Ex: 'Insônia com agitação noturna', 'Digestão pesada e azia', 'Biofertilizante para floração de orquídeas'..."
+                value={userGoalInput}
+                onChange={(e) => setUserGoalInput(e.target.value)}
+                className="flex-1 px-4 py-3 rounded-xl bg-[#faf7f2] border border-[#d6ccb8] text-sm text-[#2c3328] placeholder-[#968b75] focus:outline-hidden focus:ring-2 focus:ring-[#406343]"
+              />
+              <button
+                type="submit"
+                disabled={isGeneratingBlend || !userGoalInput.trim()}
+                className="px-6 py-3 rounded-xl bg-[#284229] hover:bg-[#1a2f1b] disabled:opacity-50 text-[#f7f5ee] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap shadow-xs"
+              >
+                {isGeneratingBlend ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-[#a4d495]" />
+                    <span>Formulando Elixir...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-[#a4d495]" />
+                    <span>Formular Receita Botânica</span>
+                  </>
+                )}
+              </button>
+            </div>
+            {aiError && (
+              <p className="text-xs text-[#b83b27] font-medium">⚠️ {aiError}</p>
+            )}
+          </form>
+
+          {/* AI Custom Blend Output */}
+          {customAiBlendResult && (
+            <div className="mt-6 p-6 rounded-2xl bg-[#faf7f2] border-2 border-[#3c633a] space-y-6 animate-fadeIn">
+              <div>
+                <span className="text-[11px] font-bold font-cinzel uppercase tracking-wider text-[#355e32] block">
+                  Prescrição Fitoterápica Personalizada
+                </span>
+                <h3 className="font-serif-botanic text-2xl font-bold text-[#1a2b1b] mt-1">
+                  {userGoalInput}
+                </h3>
+                <p className="text-xs text-[#524837] font-narrative italic mt-1 leading-relaxed">
+                  {customAiBlendResult.visaoGeral}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {customAiBlendResult.receitas?.map((rec: any, i: number) => (
+                  <div
+                    key={i}
+                    className="p-4 rounded-xl bg-[#f5efe3] border border-[#ded5c2] space-y-2"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="font-semibold text-sm text-[#1e2e1f]">
+                        🍵 {rec.nome}
+                      </h4>
+                      <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#ebe1ce] text-[#544834] font-medium">
+                        {rec.tipo}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1 text-xs text-[#453c2e]">
+                      <p>
+                        <strong>Ingredientes:</strong> {rec.ingredientes?.join(", ")}
+                      </p>
+                      <p>
+                        <strong>Modo de Preparo:</strong> {rec.modoPreparo?.join(" ")}
+                      </p>
+                      <p>
+                        <strong>Posologia:</strong> {rec.frequenciaUso}
+                      </p>
+                      {rec.contraindicacoes && (
+                        <p className="text-[#854527] bg-[#fae8e1] px-2 py-0.5 rounded">
+                          ⚠️ <strong>Precaução:</strong> {rec.contraindicacoes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {customAiBlendResult.avisoSeguranca && (
+                <p className="text-[11px] text-[#73654f] font-narrative italic text-center">
+                  ℹ️ {customAiBlendResult.avisoSeguranca}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SubSection 3: Dicionário de Propriedades Medicinais & Métodos de Extração */}
+      {boticaSubSection === "dicionario" && (
+        <PropertyDictionary
+          plants={plants}
+          onSelectPlantModal={onSelectPlantModal}
+        />
+      )}
+
+      {/* SubSection 4: Caderno de Fórmulas do Almanaque */}
+      {boticaSubSection === "caderno-receitas" && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-serif-botanic text-2xl sm:text-3xl font-bold text-[#1f2e1f]">
+                Caderno de Fórmulas do Almanaque
+              </h2>
+              <p className="text-xs text-[#6e624e] font-narrative mt-0.5">
+                Xaropes tradicionais, decocções, pomadas e biofertilizantes de solo.
+              </p>
+            </div>
+            <span className="text-xs text-[#6e624e]">
+              {filteredRecipes.length} receitas registradas
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {RECIPE_CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                  selectedCategory === cat
+                    ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+                    : "bg-[#eee6d5] text-[#544937] hover:bg-[#ded4bf] border border-[#d2c7b0]"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Curated Recipes Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filteredRecipes.map((recipe) => (
+              <div
+                key={recipe.id}
+                className="bg-[#faf7f2] rounded-2xl border border-[#ded5c2] p-6 shadow-xs hover:shadow-lg transition-all space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#edf4e8] text-[#2c5927] border border-[#c6dfbf]">
+                      {recipe.categoriaBeneficio}
+                    </span>
+                    <span className="text-xs text-[#786b55] flex items-center gap-1 font-medium">
+                      <Clock className="w-3.5 h-3.5" />
+                      {recipe.tempoPreparo}
                     </span>
                   </div>
 
-                  <div className="space-y-1 text-xs text-[#453c2e]">
+                  <h3 className="font-serif-botanic text-xl font-bold text-[#1d2d1e] leading-snug">
+                    {recipe.titulo}
+                  </h3>
+
+                  <div className="flex flex-wrap gap-1">
+                    {recipe.ervasPrincipais.map((erva, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[10px] px-2 py-0.5 rounded-md bg-[#ede4d2] text-[#4d4231] font-medium"
+                      >
+                        🌿 {erva}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[#f5efe3] border border-[#e2d8c3] space-y-1.5 text-xs text-[#453d30]">
+                    <p className="font-semibold text-[#2b2419]">Ingredientes:</p>
+                    <ul className="space-y-0.5 list-disc list-inside">
+                      {recipe.ingredientes.map((ing, i) => (
+                        <li key={i}>{ing}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-[#453d30]">
+                    <p className="font-semibold text-[#2b2419]">Modo de Preparo:</p>
+                    <ol className="space-y-1 list-decimal list-inside leading-relaxed font-narrative">
+                      {recipe.passoAPasso.map((passo, i) => (
+                        <li key={i}>{passo}</li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#ede5d5] text-xs space-y-1 text-[#423727]">
                     <p>
-                      <strong>Ingredientes:</strong> {rec.ingredientes?.join(", ")}
+                      <strong>Posologia:</strong> {recipe.posologia}
                     </p>
-                    <p>
-                      <strong>Modo de Preparo:</strong> {rec.modoPreparo?.join(" ")}
-                    </p>
-                    <p>
-                      <strong>Posologia:</strong> {rec.frequenciaUso}
-                    </p>
-                    {rec.contraindicacoes && (
-                      <p className="text-[#854527] bg-[#fae8e1] px-2 py-0.5 rounded">
-                        ⚠️ <strong>Precaução:</strong> {rec.contraindicacoes}
+                    {recipe.contraindicacoes && (
+                      <p className="text-[#8c4021]">
+                        <strong>Atenção:</strong> {recipe.contraindicacoes}
                       </p>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {customAiBlendResult.avisoSeguranca && (
-              <p className="text-[11px] text-[#73654f] font-narrative italic text-center">
-                ℹ️ {customAiBlendResult.avisoSeguranca}
-              </p>
-            )}
+                {/* Secret of the Almanac */}
+                <div className="pt-3 border-t border-[#ebe3d3] text-[11px] text-[#5c6b57] font-serif-botanic italic">
+                  ✨ Segredo do Almanaque: "{recipe.segredoAlmanaque}"
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
-
-      {/* Dicionário de Propriedades Medicinais & Métodos de Extração */}
-      <PropertyDictionary
-        plants={plants}
-        onSelectPlantModal={onSelectPlantModal}
-      />
-
-      {/* Category Pills for Curated Recipes */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-serif-botanic text-2xl sm:text-3xl font-bold text-[#1f2e1f]">
-            Caderno de Fórmulas do Almanaque
-          </h2>
-          <span className="text-xs text-[#6e624e]">
-            {filteredRecipes.length} receitas registradas
-          </span>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          {RECIPE_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all cursor-pointer ${
-                selectedCategory === cat
-                  ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
-                  : "bg-[#eee6d5] text-[#544937] hover:bg-[#ded4bf] border border-[#d2c7b0]"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Curated Recipes Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredRecipes.map((recipe) => (
-          <div
-            key={recipe.id}
-            className="bg-[#faf7f2] rounded-2xl border border-[#ded5c2] p-6 shadow-xs hover:shadow-lg transition-all space-y-4 flex flex-col justify-between"
-          >
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#edf4e8] text-[#2c5927] border border-[#c6dfbf]">
-                  {recipe.categoriaBeneficio}
-                </span>
-                <span className="text-xs text-[#786b55] flex items-center gap-1 font-medium">
-                  <Clock className="w-3.5 h-3.5" />
-                  {recipe.tempoPreparo}
-                </span>
-              </div>
-
-              <h3 className="font-serif-botanic text-xl font-bold text-[#1d2d1e] leading-snug">
-                {recipe.titulo}
-              </h3>
-
-              <div className="flex flex-wrap gap-1">
-                {recipe.ervasPrincipais.map((erva, idx) => (
-                  <span
-                    key={idx}
-                    className="text-[10px] px-2 py-0.5 rounded-md bg-[#ede4d2] text-[#4d4231] font-medium"
-                  >
-                    🌿 {erva}
-                  </span>
-                ))}
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-[#f5efe3] border border-[#e2d8c3] space-y-1.5 text-xs text-[#453d30]">
-                <p className="font-semibold text-[#2b2419]">Ingredientes:</p>
-                <ul className="space-y-0.5 list-disc list-inside">
-                  {recipe.ingredientes.map((ing, i) => (
-                    <li key={i}>{ing}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="space-y-1.5 text-xs text-[#453d30]">
-                <p className="font-semibold text-[#2b2419]">Modo de Preparo:</p>
-                <ol className="space-y-1 list-decimal list-inside leading-relaxed font-narrative">
-                  {recipe.passoAPasso.map((passo, i) => (
-                    <li key={i}>{passo}</li>
-                  ))}
-                </ol>
-              </div>
-
-              <div className="p-3 rounded-xl bg-[#ede5d5] text-xs space-y-1 text-[#423727]">
-                <p>
-                  <strong>Posologia:</strong> {recipe.posologia}
-                </p>
-                {recipe.contraindicacoes && (
-                  <p className="text-[#8c4021]">
-                    <strong>Atenção:</strong> {recipe.contraindicacoes}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Secret of the Almanac */}
-            <div className="pt-3 border-t border-[#ebe3d3] text-[11px] text-[#5c6b57] font-serif-botanic italic">
-              ✨ Segredo do Almanaque: "{recipe.segredoAlmanaque}"
-            </div>
-          </div>
-        ))}
-      </div>
+      )}
     </div>
   );
 };
