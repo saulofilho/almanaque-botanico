@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { 
   Sprout, 
   Droplets, 
@@ -17,38 +17,60 @@ import {
   Activity,
   Layers,
   Ruler,
-  Printer
+  Printer,
+  Camera,
+  FileText,
+  Award,
+  TrendingUp
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { UserPlant, PlantEntry } from "../types";
+import { UserPlant, PlantEntry, FieldJournalEntry, ScheduledFertilization } from "../types";
 import { GardenHealthChart } from "./GardenHealthChart";
+import { GardenEfficiencyReport } from "./GardenEfficiencyReport";
 import { FertilizationCalendar } from "./FertilizationCalendar";
 import { HarvestCalendar } from "./HarvestCalendar";
 import { PlantingBedPlanner } from "./PlantingBedPlanner";
 import { PlantGrowthStageIndicator, PlantGrowthImageBadge } from "./PlantGrowthStageIndicator";
 import { PrintablePlantCards } from "./PrintablePlantCards";
+import { FieldJournalView } from "./FieldJournalView";
 import { getPlantHarvestRecommendation } from "../utils/harvestPlanner";
 
 interface MyGardenViewProps {
   garden: UserPlant[];
+  journalEntries?: FieldJournalEntry[];
+  scheduledFertilizations?: ScheduledFertilization[];
   onWaterPlant: (plantId: string) => void;
   onRemovePlant: (plantId: string) => void;
   onUpdateNotes: (plantId: string, notes: string) => void;
   onUpdateStatus?: (plantId: string, newStatus: UserPlant["estadoSaude"]) => void;
   onUpdateFertilizationDate?: (plantId: string, dateIso: string) => void;
   onAddNewCustomPlant: (newPlant: Omit<UserPlant, "id">) => void;
+  onAddJournalEntry?: (entry: FieldJournalEntry) => void;
+  onUpdateJournalEntry?: (entry: FieldJournalEntry) => void;
+  onDeleteJournalEntry?: (entryId: string) => void;
+  onAddScheduledFertilization?: (schedule: ScheduledFertilization) => void;
+  onUpdateScheduledFertilization?: (schedule: ScheduledFertilization) => void;
+  onDeleteScheduledFertilization?: (scheduleId: string) => void;
   allSpecies: PlantEntry[];
   onSelectPlantModal: (plant: PlantEntry) => void;
 }
 
 export const MyGardenView: React.FC<MyGardenViewProps> = ({
   garden,
+  journalEntries = [],
+  scheduledFertilizations = [],
   onWaterPlant,
   onRemovePlant,
   onUpdateNotes,
   onUpdateStatus,
   onUpdateFertilizationDate,
   onAddNewCustomPlant,
+  onAddJournalEntry,
+  onUpdateJournalEntry,
+  onDeleteJournalEntry,
+  onAddScheduledFertilization,
+  onUpdateScheduledFertilization,
+  onDeleteScheduledFertilization,
   allSpecies,
   onSelectPlantModal,
 }) => {
@@ -56,8 +78,10 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
   const [editingPlantId, setEditingPlantId] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState("");
   const [wateringFilter, setWateringFilter] = useState<"all" | "urgent" | "ok">("all");
-  const [activeSubView, setActiveSubView] = useState<"plantas" | "colheitas" | "planejador" | "adubacao" | "vitalidade" | "cartoes">("plantas");
+  const [activeSubView, setActiveSubView] = useState<"plantas" | "diario" | "colheitas" | "planejador" | "adubacao" | "vitalidade" | "eficiencia" | "cartoes">("plantas");
   const [selectedPrintPlantId, setSelectedPrintPlantId] = useState<string | null>(null);
+  const [selectedJournalPlantId, setSelectedJournalPlantId] = useState<string | null>(null);
+  const [selectedFertilizationPlantId, setSelectedFertilizationPlantId] = useState<string | null>(null);
 
   // New Plant Form State
   const [formData, setFormData] = useState({
@@ -214,6 +238,13 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
   const readyToHarvestCount = harvestRecommendations.filter((r) => r.isHarvestable && r.currentMoonIsOptimal && r.isMature).length;
   const totalHarvestableCount = harvestRecommendations.filter((r) => r.isHarvestable).length;
 
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const dueFertilizationsCount = useMemo(() => {
+    return scheduledFertilizations.filter(
+      (s) => s.status === "Atrasada" || (s.status !== "Concluída" && s.dataAgendada <= todayStr)
+    ).length;
+  }, [scheduledFertilizations, todayStr]);
+
   const filteredGarden = garden.filter((plant) => {
     const st = getWateringStatus(plant);
     if (wateringFilter === "urgent") return st.isUrgent;
@@ -285,6 +316,26 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
         </button>
 
         <button
+          onClick={() => {
+            setSelectedJournalPlantId(null);
+            setActiveSubView("diario");
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "diario"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Camera className={`w-4 h-4 ${activeSubView === "diario" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Diário de Campo</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            activeSubView === "diario" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+          }`}>
+            {journalEntries.length}
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveSubView("colheitas")}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
             activeSubView === "colheitas"
@@ -320,7 +371,10 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
         </button>
 
         <button
-          onClick={() => setActiveSubView("adubacao")}
+          onClick={() => {
+            setSelectedFertilizationPlantId(null);
+            setActiveSubView("adubacao");
+          }}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
             activeSubView === "adubacao"
               ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
@@ -329,6 +383,17 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
         >
           <Calendar className={`w-4 h-4 ${activeSubView === "adubacao" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
           <span>Adubação & Solo</span>
+          {dueFertilizationsCount > 0 ? (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#e6983b] text-[#ffffff] animate-pulse">
+              {dueFertilizationsCount} alerta(s)
+            </span>
+          ) : scheduledFertilizations.length > 0 ? (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              activeSubView === "adubacao" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+            }`}>
+              {scheduledFertilizations.filter((s) => s.status !== "Concluída").length}
+            </span>
+          ) : null}
         </button>
 
         <button
@@ -341,6 +406,23 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
         >
           <Activity className={`w-4 h-4 ${activeSubView === "vitalidade" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
           <span>Monitor de Saúde</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubView("eficiencia")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "eficiencia"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Award className={`w-4 h-4 ${activeSubView === "eficiencia" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Relatório de Eficiência</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            activeSubView === "eficiencia" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+          }`}>
+            Novo
+          </span>
         </button>
 
         <button
@@ -360,6 +442,30 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
       </div>
 
       {/* SubViews Rendering */}
+      {/* SubView: Diário de Campo */}
+      {activeSubView === "diario" && (
+        <FieldJournalView
+          garden={garden}
+          allSpecies={allSpecies}
+          entries={journalEntries}
+          onAddEntry={(entry) => {
+            if (onAddJournalEntry) onAddJournalEntry(entry);
+          }}
+          onUpdateEntry={(entry) => {
+            if (onUpdateJournalEntry) onUpdateJournalEntry(entry);
+          }}
+          onDeleteEntry={(entryId) => {
+            if (onDeleteJournalEntry) onDeleteJournalEntry(entryId);
+          }}
+          onUpdatePlantStatus={onUpdateStatus}
+          initialSelectedPlantId={selectedJournalPlantId}
+          onClose={() => {
+            setSelectedJournalPlantId(null);
+            setActiveSubView("plantas");
+          }}
+        />
+      )}
+
       {/* SubView: Cartões Imprimíveis */}
       {activeSubView === "cartoes" && (
         <PrintablePlantCards
@@ -407,12 +513,17 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
         />
       )}
 
-      {/* SubView: Adubação Sazonal */}
+      {/* SubView: Adubação & Fertilização */}
       {activeSubView === "adubacao" && (
         <FertilizationCalendar
           garden={garden}
           allSpecies={allSpecies}
+          scheduledFertilizations={scheduledFertilizations}
+          onAddScheduledFertilization={onAddScheduledFertilization}
+          onUpdateScheduledFertilization={onUpdateScheduledFertilization}
+          onDeleteScheduledFertilization={onDeleteScheduledFertilization}
           onUpdateFertilizationDate={onUpdateFertilizationDate}
+          initialSelectedPlantId={selectedFertilizationPlantId}
         />
       )}
 
@@ -423,6 +534,19 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
           allSpecies={allSpecies}
           onUpdatePlantStatus={onUpdateStatus}
           onUpdateFertilizationDate={onUpdateFertilizationDate}
+        />
+      )}
+
+      {/* SubView: Relatório de Eficiência do Jardim */}
+      {activeSubView === "eficiencia" && (
+        <GardenEfficiencyReport
+          garden={garden}
+          allSpecies={allSpecies}
+          journalEntries={journalEntries}
+          scheduledFertilizations={scheduledFertilizations}
+          onWaterPlant={onWaterPlant}
+          onUpdateFertilizationDate={onUpdateFertilizationDate}
+          onUpdatePlantStatus={onUpdateStatus}
         />
       )}
 
@@ -778,8 +902,8 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Specimen Sheet link & Print Card Action */}
-                  <div className="pt-2 border-t border-[#ebe3d3] flex items-center justify-between gap-2">
+                  {/* Specimen Sheet link, Journal & Print Card Actions */}
+                  <div className="pt-2 border-t border-[#ebe3d3] flex flex-wrap items-center justify-between gap-1.5">
                     {originalSpecimen ? (
                       <button
                         onClick={() => onSelectPlantModal(originalSpecimen)}
@@ -791,17 +915,43 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                       </button>
                     ) : <div />}
 
-                    <button
-                      onClick={() => {
-                        setSelectedPrintPlantId(plant.id);
-                        setActiveSubView("cartoes");
-                      }}
-                      className="py-1.5 px-2.5 rounded-lg bg-[#ede4d2] hover:bg-[#dfd4bd] text-xs text-[#423727] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                      title="Gerar e imprimir cartão de instrução para esta planta"
-                    >
-                      <Printer className="w-3.5 h-3.5 text-[#2d592a]" />
-                      <span>Imprimir Cartão</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setSelectedFertilizationPlantId(plant.id);
+                          setActiveSubView("adubacao");
+                        }}
+                        className="py-1.5 px-2 rounded-lg bg-[#fbf3e4] hover:bg-[#f3e4c8] text-xs text-[#704618] font-semibold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                        title="Agendar ou ver adubações para esta planta"
+                      >
+                        <Calendar className="w-3.5 h-3.5 text-[#a86824]" />
+                        <span>Adubar</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedJournalPlantId(plant.id);
+                          setActiveSubView("diario");
+                        }}
+                        className="py-1.5 px-2 rounded-lg bg-[#e2eedf] hover:bg-[#d0e5cc] text-xs text-[#1c4d1e] font-semibold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                        title="Registrar observação no Diário de Campo para esta planta"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-[#285e2b]" />
+                        <span>Diário</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setSelectedPrintPlantId(plant.id);
+                          setActiveSubView("cartoes");
+                        }}
+                        className="py-1.5 px-2 rounded-lg bg-[#ede4d2] hover:bg-[#dfd4bd] text-xs text-[#423727] font-semibold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                        title="Gerar e imprimir cartão de instrução para esta planta"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-[#2d592a]" />
+                        <span>Cartão</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

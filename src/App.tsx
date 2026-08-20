@@ -11,12 +11,16 @@ import { OnboardingModal, STORAGE_KEY_ONBOARDING } from "./components/Onboarding
 import { WallpaperGallery } from "./components/WallpaperGallery";
 import { BotanicalWeatherWidget } from "./components/BotanicalWeatherWidget";
 import { BOTANICAL_PLANTS } from "./data/plants";
-import { PlantEntry, UserPlant } from "./types";
+import { SAMPLE_FIELD_JOURNAL } from "./data/sampleFieldJournal";
+import { SAMPLE_FERTILIZATIONS } from "./data/sampleFertilizations";
+import { PlantEntry, UserPlant, FieldJournalEntry, ScheduledFertilization } from "./types";
 import { Sprout, Heart, Leaf, ShieldCheck, Moon, Sparkles, Compass, Image as ImageIcon } from "lucide-react";
 import confetti from "canvas-confetti";
 
 const STORAGE_KEY_GARDEN = "almanaque_botanico_my_garden_v1";
 const STORAGE_KEY_CATALOG = "almanaque_botanico_extra_catalog_v1";
+const STORAGE_KEY_FIELD_JOURNAL = "almanaque_botanico_field_journal_v1";
+const STORAGE_KEY_FERTILIZATION_SCHEDULE = "almanaque_botanico_fertilization_schedule_v1";
 
 const INITIAL_GARDEN_PLANTS: UserPlant[] = [
   {
@@ -100,6 +104,32 @@ export default function App() {
     return INITIAL_GARDEN_PLANTS;
   });
 
+  // Field Journal State
+  const [fieldJournal, setFieldJournal] = useState<FieldJournalEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_FIELD_JOURNAL);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn("Erro ao ler diário de campo do localStorage", e);
+    }
+    return SAMPLE_FIELD_JOURNAL;
+  });
+
+  // Scheduled Fertilizations State
+  const [scheduledFertilizations, setScheduledFertilizations] = useState<ScheduledFertilization[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_FERTILIZATION_SCHEDULE);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn("Erro ao ler agendamentos de adubação do localStorage", e);
+    }
+    return SAMPLE_FERTILIZATIONS;
+  });
+
   // Toast Notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -118,6 +148,65 @@ export default function App() {
       console.warn("Erro ao salvar jardim no localStorage", e);
     }
   }, [garden]);
+
+  // Sync Field Journal to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_FIELD_JOURNAL, JSON.stringify(fieldJournal));
+    } catch (e) {
+      console.warn("Erro ao salvar diário de campo no localStorage", e);
+    }
+  }, [fieldJournal]);
+
+  // Sync Scheduled Fertilizations to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY_FERTILIZATION_SCHEDULE,
+        JSON.stringify(scheduledFertilizations)
+      );
+    } catch (e) {
+      console.warn("Erro ao salvar agendamentos de adubação no localStorage", e);
+    }
+  }, [scheduledFertilizations]);
+
+  const handleAddFieldJournalEntry = (newEntry: FieldJournalEntry) => {
+    setFieldJournal((prev) => [newEntry, ...prev]);
+    showToast("📷 Observação registrada com sucesso no Diário de Campo!");
+  };
+
+  const handleUpdateFieldJournalEntry = (updatedEntry: FieldJournalEntry) => {
+    setFieldJournal((prev) =>
+      prev.map((e) => (e.id === updatedEntry.id ? updatedEntry : e))
+    );
+    showToast("📝 Registro do Diário de Campo atualizado!");
+  };
+
+  const handleDeleteFieldJournalEntry = (entryId: string) => {
+    setFieldJournal((prev) => prev.filter((e) => e.id !== entryId));
+    showToast("🗑️ Observação removida do Diário de Campo.");
+  };
+
+  const handleAddScheduledFertilization = (newSchedule: ScheduledFertilization) => {
+    setScheduledFertilizations((prev) => [newSchedule, ...prev]);
+    showToast("🌱 Fertilização agendada com sucesso no calendário!");
+  };
+
+  const handleUpdateScheduledFertilization = (updatedSchedule: ScheduledFertilization) => {
+    setScheduledFertilizations((prev) =>
+      prev.map((s) => (s.id === updatedSchedule.id ? updatedSchedule : s))
+    );
+    if (updatedSchedule.status === "Concluída") {
+      showToast("✨ Adubação marcada como realizada com sucesso!");
+    } else {
+      showToast("📅 Agendamento de adubação atualizado!");
+    }
+  };
+
+  const handleDeleteScheduledFertilization = (scheduleId: string) => {
+    setScheduledFertilizations((prev) => prev.filter((s) => s.id !== scheduleId));
+    showToast("🗑️ Agendamento de adubação excluído.");
+  };
 
   const gardenPlantIds = new Set(
     garden.map((p) => p.especieId).filter(Boolean) as string[]
@@ -283,12 +372,20 @@ export default function App() {
         {activeTab === "meujardim" && (
           <MyGardenView
             garden={garden}
+            journalEntries={fieldJournal}
+            scheduledFertilizations={scheduledFertilizations}
             onWaterPlant={handleWaterPlant}
             onRemovePlant={handleRemovePlant}
             onUpdateNotes={handleUpdateNotes}
             onUpdateStatus={handleUpdatePlantStatus}
             onUpdateFertilizationDate={handleUpdateFertilizationDate}
             onAddNewCustomPlant={handleAddNewCustomPlant}
+            onAddJournalEntry={handleAddFieldJournalEntry}
+            onUpdateJournalEntry={handleUpdateFieldJournalEntry}
+            onDeleteJournalEntry={handleDeleteFieldJournalEntry}
+            onAddScheduledFertilization={handleAddScheduledFertilization}
+            onUpdateScheduledFertilization={handleUpdateScheduledFertilization}
+            onDeleteScheduledFertilization={handleDeleteScheduledFertilization}
             allSpecies={plantsCatalog}
             onSelectPlantModal={(plant) => setSelectedPlantForModal(plant)}
           />
@@ -304,6 +401,9 @@ export default function App() {
           onClose={() => setSelectedPlantForModal(null)}
           onAddToGarden={handleAddToGarden}
           isInGarden={gardenPlantIds.has(selectedPlantForModal.id)}
+          userPlant={garden.find((p) => p.especieId === selectedPlantForModal.id) || null}
+          onWaterPlant={handleWaterPlant}
+          onUpdatePlantHealth={handleUpdatePlantStatus}
         />
       )}
 

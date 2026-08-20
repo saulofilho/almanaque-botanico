@@ -1,6 +1,6 @@
 {
   "name": "Almanaque Botânico",
-  "description": "Almanaque Botânico completo com enciclopédia de plantas, calendário lunar de cultivo, fitoterapia e identificação/diagnóstico botânico com IA.",
+  "description": "Almanaque Botânico completo com enciclopédia de plantas, calendário lunar, diário de campo, relatório de eficiência e saúde acumulada, fitoterapia e diagnóstico com IA.",
   "requestFramePermissions": ["camera", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

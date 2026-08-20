@@ -15,13 +15,17 @@ import {
   BookmarkPlus,
   Check
 } from "lucide-react";
-import { PlantEntry } from "../types";
+import { PlantEntry, UserPlant } from "../types";
+import { AdaptiveCareTips } from "./AdaptiveCareTips";
 
 interface PlantModalProps {
   plant: PlantEntry | null;
   onClose: () => void;
   onAddToGarden: (plant: PlantEntry) => void;
   isInGarden: boolean;
+  userPlant?: UserPlant | null;
+  onWaterPlant?: (plantId: string) => void;
+  onUpdatePlantHealth?: (plantId: string, health: UserPlant["estadoSaude"]) => void;
 }
 
 export const PlantModal: React.FC<PlantModalProps> = ({
@@ -29,6 +33,9 @@ export const PlantModal: React.FC<PlantModalProps> = ({
   onClose,
   onAddToGarden,
   isInGarden,
+  userPlant,
+  onWaterPlant,
+  onUpdatePlantHealth,
 }) => {
   if (!plant) return null;
 
@@ -220,6 +227,14 @@ export const PlantModal: React.FC<PlantModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Dicas de Manejo Adaptativo (Saúde da Planta + Clima Local) */}
+          <AdaptiveCareTips
+            plant={plant}
+            userPlant={userPlant}
+            onWaterPlant={onWaterPlant}
+            onUpdatePlantHealth={onUpdatePlantHealth}
+          />
 
           {/* Phytotherapy & Medicinal Benefits */}
           {plant.usosFitoterapicos && plant.usosFitoterapicos.length > 0 && (

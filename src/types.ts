@@ -104,3 +104,52 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+export type FieldObservationCategory =
+  | "Pragas & Insetos"
+  | "Mudança Foliar & Sintomas"
+  | "Brotamento & Floração"
+  | "Poda & Manejo"
+  | "Adubação & Nutrição"
+  | "Clima & Ambiente"
+  | "Rega & Drenagem"
+  | "Colheita & Secagem"
+  | "Geral";
+
+export type FieldObservationSeverity = "Positiva" | "Leve" | "Moderada" | "Crítica";
+
+export interface FieldJournalEntry {
+  id: string;
+  userPlantId?: string; // id from UserPlant or undefined for general garden
+  plantName?: string; // cached plant name
+  data: string; // ISO date "YYYY-MM-DD"
+  hora?: string; // "HH:mm"
+  categoria: FieldObservationCategory;
+  severidade: FieldObservationSeverity;
+  titulo: string;
+  descricao: string;
+  fotos: string[]; // Base64 data URLs or links
+  acaoTomada?: string; // e.g. "Aplicação de calda de fumo e óleo de neem"
+  statusResolucao: "Em Acompanhamento" | "Resolvido" | "Observação Contínua";
+  faseLunar?: string;
+  temperaturaClima?: string;
+  tags?: string[];
+  criadoEm: string;
+}
+
+export interface ScheduledFertilization {
+  id: string;
+  userPlantId: string; // "general" or plant.id
+  plantName: string;
+  dataAgendada: string; // ISO "YYYY-MM-DD"
+  horaAgendada?: string; // "HH:mm"
+  tipoAdubo: string; // e.g., "Bokashi Orgânico", "Húmus de Minhoca", "Calda de Banana", "Farinha de Casca de Ovo", "Esterco Curtido", etc.
+  modoAplicacao: string; // e.g., "Incorporação no solo", "Fertirrigação líquida", "Pulverização foliar"
+  dosagem?: string;
+  faseLunarRecomendada?: string;
+  observacoes?: string;
+  status: "Pendente" | "Concluída" | "Atrasada";
+  concluidaEm?: string;
+  criadoEm: string;
+}
+
