@@ -16,7 +16,8 @@ import {
   Scissors,
   Activity,
   Layers,
-  Ruler
+  Ruler,
+  Printer
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { UserPlant, PlantEntry } from "../types";
@@ -25,6 +26,7 @@ import { FertilizationCalendar } from "./FertilizationCalendar";
 import { HarvestCalendar } from "./HarvestCalendar";
 import { PlantingBedPlanner } from "./PlantingBedPlanner";
 import { PlantGrowthStageIndicator, PlantGrowthImageBadge } from "./PlantGrowthStageIndicator";
+import { PrintablePlantCards } from "./PrintablePlantCards";
 import { getPlantHarvestRecommendation } from "../utils/harvestPlanner";
 
 interface MyGardenViewProps {
@@ -54,7 +56,8 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
   const [editingPlantId, setEditingPlantId] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState("");
   const [wateringFilter, setWateringFilter] = useState<"all" | "urgent" | "ok">("all");
-  const [activeSubView, setActiveSubView] = useState<"plantas" | "colheitas" | "planejador" | "adubacao" | "vitalidade">("plantas");
+  const [activeSubView, setActiveSubView] = useState<"plantas" | "colheitas" | "planejador" | "adubacao" | "vitalidade" | "cartoes">("plantas");
+  const [selectedPrintPlantId, setSelectedPrintPlantId] = useState<string | null>(null);
 
   // New Plant Form State
   const [formData, setFormData] = useState({
@@ -238,13 +241,27 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-5 py-3 rounded-2xl bg-[#a4d495] hover:bg-[#b8e5aa] text-[#19331a] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-105 cursor-pointer whitespace-nowrap self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Plantar Nova Espécie</span>
-          </button>
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 self-start sm:self-auto">
+            <button
+              onClick={() => {
+                setSelectedPrintPlantId(null);
+                setActiveSubView("cartoes");
+              }}
+              className="px-4 py-3 rounded-2xl bg-[#375239] hover:bg-[#436445] text-[#f7f5ee] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border border-[#527754] cursor-pointer whitespace-nowrap"
+              title="Gerar cartões e etiquetas imprimíveis para as plantas"
+            >
+              <Printer className="w-4 h-4 text-[#a4d495]" />
+              <span>Imprimir Cartões</span>
+            </button>
+
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-5 py-3 rounded-2xl bg-[#a4d495] hover:bg-[#b8e5aa] text-[#19331a] font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-105 cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Plantar Nova Espécie</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -325,9 +342,38 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
           <Activity className={`w-4 h-4 ${activeSubView === "vitalidade" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
           <span>Monitor de Saúde</span>
         </button>
+
+        <button
+          onClick={() => {
+            setSelectedPrintPlantId(null);
+            setActiveSubView("cartoes");
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "cartoes"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Printer className={`w-4 h-4 ${activeSubView === "cartoes" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Cartões Imprimíveis</span>
+        </button>
       </div>
 
       {/* SubViews Rendering */}
+      {/* SubView: Cartões Imprimíveis */}
+      {activeSubView === "cartoes" && (
+        <PrintablePlantCards
+          garden={garden}
+          allSpecies={allSpecies}
+          initialSelectedPlantId={selectedPrintPlantId}
+          onClose={() => {
+            setSelectedPrintPlantId(null);
+            setActiveSubView("plantas");
+          }}
+          onSelectPlantModal={onSelectPlantModal}
+        />
+      )}
+
       {/* SubView: Colheitas Lunares */}
       {activeSubView === "colheitas" && (
         <HarvestCalendar
@@ -732,18 +778,31 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Specimen Sheet link if exists */}
-                  {originalSpecimen && (
-                    <div className="pt-2 border-t border-[#ebe3d3]">
+                  {/* Specimen Sheet link & Print Card Action */}
+                  <div className="pt-2 border-t border-[#ebe3d3] flex items-center justify-between gap-2">
+                    {originalSpecimen ? (
                       <button
                         onClick={() => onSelectPlantModal(originalSpecimen)}
-                        className="w-full py-1.5 text-xs text-[#31572f] font-semibold hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                        className="py-1.5 px-2 text-xs text-[#31572f] font-semibold hover:underline flex items-center gap-1 cursor-pointer truncate"
+                        title="Abrir monografia botânica completa"
                       >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>Ver Monografia Completa</span>
+                        <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Ver Ficha</span>
                       </button>
-                    </div>
-                  )}
+                    ) : <div />}
+
+                    <button
+                      onClick={() => {
+                        setSelectedPrintPlantId(plant.id);
+                        setActiveSubView("cartoes");
+                      }}
+                      className="py-1.5 px-2.5 rounded-lg bg-[#ede4d2] hover:bg-[#dfd4bd] text-xs text-[#423727] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                      title="Gerar e imprimir cartão de instrução para esta planta"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-[#2d592a]" />
+                      <span>Imprimir Cartão</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );
