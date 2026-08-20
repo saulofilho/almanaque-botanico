@@ -153,3 +153,42 @@ export interface ScheduledFertilization {
   criadoEm: string;
 }
 
+export interface PestPatternAnalysisItem {
+  pragaOuPatogeno: string;
+  nomeCientificoPraga?: string;
+  taxaRecorrencia: "Frequente" | "Moderada" | "Esporádica" | "Recorrente Crítica";
+  frequenciaOcorrencias: number;
+  plantasAfetadas: string[];
+  sintomasVisuaisDetectados: string[];
+  fatoresPropiciosIdentificados: string[];
+  diagnosticoVisualFotos: string;
+  metodosControleBiologico: {
+    inimigosNaturais: string[];
+    biopreparadosECaldas: {
+      nome: string;
+      ingredientes: string[];
+      modoPreparo: string;
+      frequenciaAplicacao: string;
+      horarioIdeal: string;
+    }[];
+    plantasRepelentesCompanheiras: string[];
+    manejoCulturalPreventivo: string[];
+  };
+  cronogramaPrevencao: {
+    fase: string;
+    acao: string;
+  }[];
+}
+
+export interface JournalPestAnalysisReport {
+  id: string;
+  dataAnalise: string;
+  resumoGeral: string;
+  totalFotosAnalisadas: number;
+  totalOcorrenciasMapeadas: number;
+  nivelRiscoJardim: "Baixo" | "Moderado" | "Alto" | "Crítico";
+  padroesDetectados: PestPatternAnalysisItem[];
+  conselhoMestreAlmanaque: string;
+  faseLunarRecomendadaManejo: string;
+}
+

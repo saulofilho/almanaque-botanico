@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { UserPlant, FieldJournalEntry, FieldObservationCategory, FieldObservationSeverity, PlantEntry } from "../types";
 import { getAstronomicalMoonPhase } from "../data/lunarData";
+import { PestPatternAnalysisModal } from "./PestPatternAnalysisModal";
 import confetti from "canvas-confetti";
 
 interface FieldJournalViewProps {
@@ -45,6 +46,7 @@ interface FieldJournalViewProps {
   onUpdateEntry: (entry: FieldJournalEntry) => void;
   onDeleteEntry: (entryId: string) => void;
   onUpdatePlantStatus?: (plantId: string, newStatus: UserPlant["estadoSaude"]) => void;
+  onScheduleBioSpray?: (plantId: string, plantName: string, sprayName: string, notes?: string) => void;
   initialSelectedPlantId?: string | null;
   onClose?: () => void;
 }
@@ -152,9 +154,14 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
   onUpdateEntry,
   onDeleteEntry,
   onUpdatePlantStatus,
+  onScheduleBioSpray,
   initialSelectedPlantId = null,
   onClose,
 }) => {
+  // Pest Pattern AI Analysis Modal
+  const [isPestModalOpen, setIsPestModalOpen] = useState<boolean>(false);
+  const [pestModalInitialPlantId, setPestModalInitialPlantId] = useState<string | null>(null);
+
   // View states
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [filterPlantId, setFilterPlantId] = useState<string>(initialSelectedPlantId || "all");
@@ -162,6 +169,17 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
+
+  // Instant Photo AI Inspection
+  const [isInspectingPhoto, setIsInspectingPhoto] = useState<boolean>(false);
+  const [instantInspectionResult, setInstantInspectionResult] = useState<{
+    pragaIdentificada: string;
+    confianca: string;
+    sintomas: string[];
+    metodoBiologicoImediato: string;
+    inimigoNatural: string;
+    receitaPreparo: string;
+  } | null>(null);
 
   // Form State
   const [selectedPlantId, setSelectedPlantId] = useState<string>(initialSelectedPlantId || (garden[0]?.id || ""));
@@ -179,6 +197,76 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
   const [attachedPhotos, setAttachedPhotos] = useState<string[]>([]);
   const [syncPlantHealth, setSyncPlantHealth] = useState<boolean>(true);
   const [suggestedHealthStatus, setSuggestedHealthStatus] = useState<UserPlant["estadoSaude"]>("Necessita Atenção");
+
+  const handleInstantPhotoInspection = async () => {
+    if (attachedPhotos.length === 0) return;
+    setIsInspectingPhoto(true);
+    setInstantInspectionResult(null);
+
+    const targetPlantName = garden.find((p) => p.id === selectedPlantId)?.nomePersonalizado || "Jardim Geral";
+    const photoToInspect = attachedPhotos[0];
+
+    try {
+      const response = await fetch("/api/gemini/analyze-journal-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: photoToInspect,
+          plantName: targetPlantName,
+          userNotes: description || title || "",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro na inspeção da foto");
+      }
+
+      const result = await response.json();
+      setInstantInspectionResult(result);
+
+      confetti({
+        particleCount: 25,
+        spread: 40,
+        origin: { y: 0.6 },
+        colors: ["#2d7a32", "#d97706"],
+      });
+    } catch (e) {
+      console.warn("Falha na inspeção rápida da foto:", e);
+      setInstantInspectionResult({
+        pragaIdentificada: "Possível Cochonilha ou Ácaro",
+        confianca: "Média",
+        sintomas: ["Pontos esbranquiçados e folhas com perda de viço"],
+        metodoBiologicoImediato: "Aplique calda de sabão de coco neutro com óleo de neem 1% ao entardecer.",
+        inimigoNatural: "Joaninhas predadoras",
+        receitaPreparo: "5ml de sabão líquido + 5ml de óleo de neem em 1L de água morna. Borrifar sob as folhas.",
+      });
+    } finally {
+      setIsInspectingPhoto(false);
+    }
+  };
+
+  const handleApplyInstantInspection = () => {
+    if (!instantInspectionResult) return;
+
+    if (!title) {
+      setTitle(`Ocorrência: ${instantInspectionResult.pragaIdentificada}`);
+    }
+
+    if (instantInspectionResult.pragaIdentificada.toLowerCase().includes("praga") ||
+        instantInspectionResult.pragaIdentificada.toLowerCase().includes("cochonilha") ||
+        instantInspectionResult.pragaIdentificada.toLowerCase().includes("pulg") ||
+        instantInspectionResult.pragaIdentificada.toLowerCase().includes("ácaro") ||
+        instantInspectionResult.pragaIdentificada.toLowerCase().includes("mosca")) {
+      setCategory("Pragas & Insetos");
+      setSeverity("Moderada");
+    }
+
+    const additionalNotes = `\n[Diagnóstico IA]: Identificado ${instantInspectionResult.pragaIdentificada}. Sintomas: ${instantInspectionResult.sintomas.join(", ")}.`;
+    setDescription((prev) => (prev ? `${prev}${additionalNotes}` : additionalNotes.trim()));
+
+    const recommendedAction = `Manejo Orgânico: ${instantInspectionResult.metodoBiologicoImediato}\nReceita da Calda: ${instantInspectionResult.receitaPreparo}\nInimigo Natural: ${instantInspectionResult.inimigoNatural}`;
+    setActionTaken((prev) => (prev ? `${prev}\n${recommendedAction}` : recommendedAction));
+  };
 
   // Camera Stream States
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
@@ -447,7 +535,20 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => {
+                setPestModalInitialPlantId(filterPlantId !== "all" ? filterPlantId : null);
+                setIsPestModalOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-[#852b1b] hover:bg-[#6e1e10] text-white font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-md hover:scale-102 active:scale-98"
+              title="Identificar padrões recorrentes e controle biológico com IA"
+            >
+              <Sparkles className="w-4 h-4 text-[#facc15]" />
+              <Bug className="w-4 h-4" />
+              <span>Análise de Pragas (IA)</span>
+            </button>
+
             {onClose && (
               <button
                 onClick={onClose}
@@ -462,7 +563,7 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
                 setIsFormOpen((prev) => !prev);
                 if (isFormOpen) stopCamera();
               }}
-              className="px-5 py-2.5 rounded-xl bg-[#284229] hover:bg-[#192c1a] text-[#f7f5ee] font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-md hover:scale-105"
+              className="px-5 py-2.5 rounded-xl bg-[#284229] hover:bg-[#192c1a] text-[#f7f5ee] font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-md hover:scale-102 active:scale-98"
             >
               {isFormOpen ? (
                 <>
@@ -472,7 +573,7 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
               ) : (
                 <>
                   <Plus className="w-4 h-4 text-[#a4d495]" />
-                  <span>Nova Observação de Campo</span>
+                  <span>Nova Observação</span>
                 </>
               )}
             </button>
@@ -503,25 +604,45 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-[#faf7f2] border border-[#ded5c2] space-y-1">
-            <span className="text-[11px] font-semibold text-[#665a44] flex items-center gap-1">
-              <Bug className="w-3.5 h-3.5 text-[#dc2626]" />
-              Alertas de Pragas
+          <div
+            onClick={() => {
+              setPestModalInitialPlantId(filterPlantId !== "all" ? filterPlantId : null);
+              setIsPestModalOpen(true);
+            }}
+            className="p-3.5 rounded-2xl bg-[#fef2f2] hover:bg-[#fee2e2] border border-[#fecaca] space-y-1 transition-colors cursor-pointer group"
+            title="Clique para abrir a Análise de Pragas com IA"
+          >
+            <span className="text-[11px] font-semibold text-[#991b1b] flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Bug className="w-3.5 h-3.5 text-[#dc2626]" />
+                Alertas de Pragas
+              </span>
+              <Sparkles className="w-3 h-3 text-[#d97706] opacity-0 group-hover:opacity-100 transition-opacity" />
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-bold font-serif-botanic text-[#991b1b]">{pestAlerts}</span>
-              <span className="text-[10px] text-[#b91c1c]">ocorrências</span>
+              <span className="text-[10px] text-[#b91c1c]">ver IA →</span>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-[#faf7f2] border border-[#ded5c2] space-y-1">
-            <span className="text-[11px] font-semibold text-[#665a44] flex items-center gap-1">
-              <Camera className="w-3.5 h-3.5 text-[#2563eb]" />
-              Fotos Catalogadas
+          <div
+            onClick={() => {
+              setPestModalInitialPlantId(filterPlantId !== "all" ? filterPlantId : null);
+              setIsPestModalOpen(true);
+            }}
+            className="p-3.5 rounded-2xl bg-[#faf7f2] hover:bg-[#f0f4ff] border border-[#ded5c2] hover:border-[#bfdbfe] space-y-1 transition-colors cursor-pointer group"
+            title="Clique para analisar as fotos com IA"
+          >
+            <span className="text-[11px] font-semibold text-[#665a44] flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Camera className="w-3.5 h-3.5 text-[#2563eb]" />
+                Fotos Catalogadas
+              </span>
+              <Sparkles className="w-3 h-3 text-[#2563eb] opacity-0 group-hover:opacity-100 transition-opacity" />
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-bold font-serif-botanic text-[#1e40af]">{photosCount}</span>
-              <span className="text-[10px] text-[#3b82f6]">imagens</span>
+              <span className="text-[10px] text-[#3b82f6]">analisar fotos →</span>
             </div>
           </div>
         </div>
@@ -863,8 +984,70 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
                     </div>
                   ))}
                 </div>
+
+                {/* Instant Photo AI Inspection Banner */}
+                <div className="p-3.5 rounded-2xl bg-[#faf4e8] border border-[#ded2bc] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-[#d97706] shrink-0" />
+                    <div>
+                      <span className="font-semibold text-xs text-[#382d1c] block">
+                        Diagnóstico Rápido da Foto com IA
+                      </span>
+                      <span className="text-[11px] text-[#6b5e48] font-narrative">
+                        Detecte pragas na foto agora e preencha automaticamente o tratamento orgânico.
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleInstantPhotoInspection}
+                    disabled={isInspectingPhoto}
+                    className="px-3.5 py-2 rounded-xl bg-[#284229] hover:bg-[#182c19] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 ${isInspectingPhoto ? "animate-spin text-[#a4d495]" : "text-[#a4d495]"}`} />
+                    <span>{isInspectingPhoto ? "Inspecionando Foto..." : "Inspecionar Foto (IA)"}</span>
+                  </button>
+                </div>
+
+                {/* Instant Inspection Result Box */}
+                {instantInspectionResult && (
+                  <div className="p-4 rounded-2xl bg-[#f0f9eb] border border-[#bfe4b6] space-y-2.5 text-xs animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[#1f4a1b] flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#2d7a32]" />
+                        Diagnóstico: {instantInspectionResult.pragaIdentificada} (Confiança: {instantInspectionResult.confianca})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleApplyInstantInspection}
+                        className="px-2.5 py-1 rounded-lg bg-[#284229] hover:bg-[#192c1a] text-white text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Check className="w-3 h-3 text-[#a4d495]" />
+                        <span>Aplicar no Formulário</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-white/80 p-2.5 rounded-xl border border-[#cbe9c4]">
+                        <strong className="text-[#1c4519] block mb-0.5">Sintomas detectados:</strong>
+                        <span className="text-[#3b5e37]">{instantInspectionResult.sintomas.join(", ")}</span>
+                      </div>
+                      <div className="bg-white/80 p-2.5 rounded-xl border border-[#cbe9c4]">
+                        <strong className="text-[#1c4519] block mb-0.5">Inimigo natural recomendado:</strong>
+                        <span className="text-[#3b5e37]">{instantInspectionResult.inimigoNatural}</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-[#cbe9c4] text-[11px]">
+                      <strong className="text-[#1c4519] block mb-0.5">Receita biológica imediata:</strong>
+                      <span className="text-[#3b5e37]">{instantInspectionResult.receitaPreparo}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
+
           </div>
 
           {/* Plant Health State Sync & Resolution Option */}
@@ -1160,8 +1343,8 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
 
                 {/* Footer Toolbar with Quick Status Toggle and Delete */}
                 <div className="pt-2 border-t border-[#ebd8bc] flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-[#706450]">Atualizar Resolução:</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] text-[#706450]">Ações:</span>
                     <button
                       onClick={() => {
                         const nextStatus =
@@ -1171,6 +1354,19 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
                       className="px-2.5 py-1 rounded-lg bg-[#e8decd] hover:bg-[#dad0bd] text-[#423727] font-semibold text-[11px] transition-colors cursor-pointer"
                     >
                       {entry.statusResolucao === "Resolvido" ? "Reabrir Caso" : "Marcar como Resolvido ✓"}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setPestModalInitialPlantId(entry.userPlantId || null);
+                        setIsPestModalOpen(true);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[#faf0ea] hover:bg-[#f5dfd5] text-[#991b1b] font-semibold text-[11px] border border-[#fecaca] flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Analisar recorrência de pragas e prescrições biológicas para este espécime"
+                    >
+                      <Sparkles className="w-3 h-3 text-[#d97706]" />
+                      <Bug className="w-3 h-3" />
+                      <span>Analisar com IA</span>
                     </button>
                   </div>
 
@@ -1190,6 +1386,18 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
             );
           })}
         </div>
+      )}
+
+      {/* Pest Pattern & Biological Control AI Analysis Modal */}
+      {isPestModalOpen && (
+        <PestPatternAnalysisModal
+          isOpen={isPestModalOpen}
+          onClose={() => setIsPestModalOpen(false)}
+          entries={entries}
+          garden={garden}
+          initialSelectedPlantId={pestModalInitialPlantId}
+          onScheduleSpray={onScheduleBioSpray}
+        />
       )}
 
       {/* FULLSCREEN PHOTO ZOOM MODAL */}

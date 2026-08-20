@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PlantEntry, UserPlant } from "../types";
 import { AdaptiveCareTips } from "./AdaptiveCareTips";
+import { HarvestEstimatorWidget } from "./HarvestEstimatorWidget";
 
 interface PlantModalProps {
   plant: PlantEntry | null;
@@ -226,6 +227,16 @@ export const PlantModal: React.FC<PlantModalProps> = ({
                 pH ideal: {plant.phIdeal}
               </div>
             </div>
+          </div>
+
+          {/* Estimador Interativo de Colheita */}
+          <div className="space-y-2">
+            <HarvestEstimatorWidget
+              dataPlantio={userPlant?.dataPlantio || new Date().toISOString().split("T")[0]}
+              species={plant}
+              customPlantName={userPlant?.nomePersonalizado || plant.nomePopular}
+              defaultExpanded={false}
+            />
           </div>
 
           {/* Dicas de Manejo Adaptativo (Saúde da Planta + Clima Local) */}

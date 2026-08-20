@@ -33,6 +33,7 @@ import { PlantingBedPlanner } from "./PlantingBedPlanner";
 import { PlantGrowthStageIndicator, PlantGrowthImageBadge } from "./PlantGrowthStageIndicator";
 import { PrintablePlantCards } from "./PrintablePlantCards";
 import { FieldJournalView } from "./FieldJournalView";
+import { HarvestEstimatorWidget } from "./HarvestEstimatorWidget";
 import { getPlantHarvestRecommendation } from "../utils/harvestPlanner";
 
 interface MyGardenViewProps {
@@ -82,12 +83,14 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
   const [selectedPrintPlantId, setSelectedPrintPlantId] = useState<string | null>(null);
   const [selectedJournalPlantId, setSelectedJournalPlantId] = useState<string | null>(null);
   const [selectedFertilizationPlantId, setSelectedFertilizationPlantId] = useState<string | null>(null);
+  const [selectedEstimatorPlantId, setSelectedEstimatorPlantId] = useState<string | null>(null);
 
   // New Plant Form State
   const [formData, setFormData] = useState({
     nomePersonalizado: "",
     especieId: "",
     nomeCientifico: "",
+    dataPlantio: new Date().toISOString().split("T")[0],
     frequenciaDiasRega: 3,
     localizacao: "Varanda / Jardim",
     estadoSaude: "Vigorosa" as UserPlant["estadoSaude"],
@@ -123,7 +126,7 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
       nomePersonalizado: formData.nomePersonalizado.trim(),
       especieId: formData.especieId || undefined,
       nomeCientifico: formData.nomeCientifico || undefined,
-      dataPlantio: new Date().toISOString().split("T")[0],
+      dataPlantio: formData.dataPlantio || new Date().toISOString().split("T")[0],
       ultimaRega: new Date().toISOString().split("T")[0],
       frequenciaDiasRega: Number(formData.frequenciaDiasRega) || 3,
       localizacao: formData.localizacao || "Jardim",
@@ -137,6 +140,7 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
       nomePersonalizado: "",
       especieId: "",
       nomeCientifico: "",
+      dataPlantio: new Date().toISOString().split("T")[0],
       frequenciaDiasRega: 3,
       localizacao: "Varanda / Jardim",
       estadoSaude: "Vigorosa",
@@ -458,6 +462,26 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
             if (onDeleteJournalEntry) onDeleteJournalEntry(entryId);
           }}
           onUpdatePlantStatus={onUpdateStatus}
+          onScheduleBioSpray={(plantId, plantName, sprayName, notes) => {
+            if (onAddScheduledFertilization) {
+              const nextDate = new Date();
+              nextDate.setDate(nextDate.getDate() + 1);
+              onAddScheduledFertilization({
+                id: `bio-spray-${Date.now()}`,
+                userPlantId: plantId,
+                plantName: plantName,
+                dataAgendada: nextDate.toISOString().split("T")[0],
+                horaAgendada: "17:30",
+                tipoAdubo: sprayName,
+                modoAplicacao: "Pulverização foliar ao entardecer (Controle Biológico)",
+                dosagem: "Conforme laudo fitossanitário da IA",
+                faseLunarRecomendada: "Lua Minguante",
+                observacoes: notes || "Controle biológico preventivo gerado pela IA no Diário de Campo",
+                status: "Pendente",
+                criadoEm: new Date().toISOString(),
+              });
+            }
+          }}
           initialSelectedPlantId={selectedJournalPlantId}
           onClose={() => {
             setSelectedJournalPlantId(null);
@@ -951,6 +975,15 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                         <Printer className="w-3.5 h-3.5 text-[#2d592a]" />
                         <span>Cartão</span>
                       </button>
+
+                      <button
+                        onClick={() => setSelectedEstimatorPlantId(plant.id)}
+                        className="py-1.5 px-2 rounded-lg bg-[#fef8e7] hover:bg-[#faeed0] text-xs text-[#854d0e] font-semibold flex items-center gap-1 transition-colors cursor-pointer shrink-0 border border-[#fde68a]"
+                        title="Simular e estimar data de colheita e janela lunar para este espécime"
+                      >
+                        <Scissors className="w-3.5 h-3.5 text-[#b45309]" />
+                        <span>Colheita</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -961,56 +994,118 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
         </div>
       ))}
 
-      {/* Add New Plant Modal */}
+      {/* Add New Plant Modal with Embedded Interactive Harvest Estimator */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-[#faf7f2] rounded-3xl max-w-lg w-full p-6 sm:p-8 border border-[#ded5c2] shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#faf7f2] rounded-3xl max-w-2xl w-full p-6 sm:p-8 border border-[#ded5c2] shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#ded5c2] pb-4">
-              <h3 className="font-serif-botanic text-2xl font-bold text-[#1f2e1f]">
-                Plantar Nova Espécie no Herbanário
-              </h3>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#e3f0df] text-[#224f21] text-[11px] font-semibold mb-1">
+                  <Sprout className="w-3.5 h-3.5 text-[#2d7a32]" />
+                  <span>Novo Registro Botânico</span>
+                </div>
+                <h3 className="font-serif-botanic text-2xl sm:text-3xl font-bold text-[#1f2e1f]">
+                  Plantar Nova Espécie no Herbanário
+                </h3>
+              </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 rounded-lg bg-[#eee6d5] hover:bg-[#ded4bf] text-[#4f4330] cursor-pointer"
+                className="p-1.5 rounded-xl bg-[#eee6d5] hover:bg-[#ded4bf] text-[#4f4330] cursor-pointer transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitNewPlant} className="space-y-4">
+            <form onSubmit={handleSubmitNewPlant} className="space-y-5">
               {/* Preset species selector */}
               <div>
-                <label className="text-xs font-semibold text-[#544834] block mb-1">
-                  Vincular a uma Espécie do Herbário (Opcional)
+                <label className="text-xs font-bold text-[#423625] block mb-1">
+                  Vincular a uma Espécie da Enciclopédia Botânica
                 </label>
                 <select
                   value={formData.especieId}
                   onChange={(e) => handleSpeciesChange(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-[#f5efe3] border border-[#d6ccb8] text-xs text-[#2c3328] focus:outline-hidden"
+                  className="w-full p-3 rounded-xl bg-[#f5efe3] border border-[#d6ccb8] text-xs text-[#2c3328] font-medium focus:outline-hidden"
                 >
-                  <option value="">-- Cadastrar planta personalizada --</option>
+                  <option value="">-- Cadastrar planta personalizada ou herbácea livre --</option>
                   {allSpecies.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.nomePopular} ({s.nomeCientifico})
+                      {s.nomePopular} ({s.nomeCientifico}) • {s.categoria} [{s.ciclo}]
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Plant Name */}
-              <div>
-                <label className="text-xs font-semibold text-[#544834] block mb-1">
-                  Nome da Planta ou Apelido *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Alecrim do Canteiro Norte, Minha Monstera..."
-                  value={formData.nomePersonalizado}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nomePersonalizado: e.target.value })
+              {/* Plant Name & Planting Date Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-xs font-bold text-[#423625] block mb-1">
+                    Nome da Planta ou Apelido *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Alecrim do Canteiro Norte, Camomila..."
+                    value={formData.nomePersonalizado}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nomePersonalizado: e.target.value })
+                    }
+                    className="w-full p-2.5 rounded-xl bg-[#f5efe3] border border-[#d6ccb8] text-xs text-[#2c3328] focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-[#423625] block mb-1">
+                    Data do Plantio *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.dataPlantio}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dataPlantio: e.target.value })
+                    }
+                    className="w-full p-2.5 rounded-xl bg-[#f5efe3] border border-[#d6ccb8] text-xs text-[#2c3328] font-medium focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* INTERACTIVE HARVEST ESTIMATOR WIDGET */}
+              <div className="space-y-1.5">
+                <HarvestEstimatorWidget
+                  dataPlantio={formData.dataPlantio}
+                  species={allSpecies.find((s) => s.id === formData.especieId)}
+                  customPlantName={formData.nomePersonalizado}
+                  onChangePlantingDate={(newDate) =>
+                    setFormData((prev) => ({ ...prev, dataPlantio: newDate }))
                   }
-                  className="w-full p-2.5 rounded-xl bg-[#f5efe3] border border-[#d6ccb8] text-xs text-[#2c3328] focus:outline-hidden"
+                  onApplyToNotes={(formattedText) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      anotacoes: prev.anotacoes
+                        ? `${prev.anotacoes}\n\n${formattedText}`
+                        : formattedText,
+                    }));
+                  }}
+                  onScheduleHarvestEvent={(est) => {
+                    if (onAddScheduledFertilization) {
+                      onAddScheduledFertilization({
+                        id: `harvest-plan-${Date.now()}`,
+                        userPlantId: `temp-${Date.now()}`,
+                        plantName: formData.nomePersonalizado || "Nova Planta",
+                        dataAgendada: est.estimatedHarvestDate,
+                        horaAgendada: "08:30",
+                        tipoAdubo: `Colheita: ${est.targetPart}`,
+                        modoAplicacao: `Colheita na ${est.nearestOptimalLunarWindow.phaseName} (${est.bestHarvestTime})`,
+                        dosagem: est.harvestTechnique,
+                        faseLunarRecomendada: est.idealLunarPhase,
+                        observacoes: `Estimativa gerada pelo Almanaque: ${est.activePrinciplesFocus}`,
+                        status: "Pendente",
+                        criadoEm: new Date().toISOString(),
+                      });
+                    }
+                  }}
+                  defaultExpanded={true}
                 />
               </div>
 
@@ -1022,7 +1117,7 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Varanda, Janela da Cozinha"
+                    placeholder="Ex: Varanda, Canteiro 1, Janela"
                     value={formData.localizacao}
                     onChange={(e) =>
                       setFormData({ ...formData, localizacao: e.target.value })
@@ -1054,7 +1149,7 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
               {/* Health State */}
               <div>
                 <label className="text-xs font-semibold text-[#544834] block mb-1">
-                  Estado Geral de Saúde
+                  Estado Inicial de Saúde
                 </label>
                 <select
                   value={formData.estadoSaude}
@@ -1076,16 +1171,16 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
               {/* Notes */}
               <div>
                 <label className="text-xs font-semibold text-[#544834] block mb-1">
-                  Anotações Iniciais
+                  Anotações Iniciais do Diário
                 </label>
                 <textarea
                   rows={3}
-                  placeholder="Data de germinação, tipo de terra usada, adubo inicial..."
+                  placeholder="Tipo de substrato, notas de plantio, previsão de colheita inserida..."
                   value={formData.anotacoes}
                   onChange={(e) =>
                     setFormData({ ...formData, anotacoes: e.target.value })
                   }
-                  className="w-full p-2.5 rounded-xl bg-[#f5efe3] border border-[#d6ccb8] text-xs text-[#2c3328] focus:outline-hidden resize-none"
+                  className="w-full p-2.5 rounded-xl bg-[#f5efe3] border border-[#d6ccb8] text-xs text-[#2c3328] focus:outline-hidden resize-none font-narrative"
                 />
               </div>
 
@@ -1093,19 +1188,101 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-[#ede5d5] hover:bg-[#ded4bf] text-xs font-semibold text-[#524633] cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-[#ede5d5] hover:bg-[#ded4bf] text-xs font-semibold text-[#524633] cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#284229] hover:bg-[#192f1a] text-xs font-semibold text-[#f7f5ee] cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-[#284229] hover:bg-[#192f1a] text-xs font-bold text-[#f7f5ee] cursor-pointer shadow-md hover:scale-102 transition-all"
                 >
                   Confirmar Plantio
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* STANDALONE HARVEST ESTIMATOR MODAL FOR EXISTING PLANTS */}
+      {selectedEstimatorPlantId && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          {(() => {
+            const plant = garden.find((p) => p.id === selectedEstimatorPlantId);
+            if (!plant) return null;
+            const species = allSpecies.find(
+              (s) => s.id === plant.especieId || s.nomePopular.toLowerCase() === plant.nomePersonalizado.toLowerCase()
+            );
+
+            return (
+              <div className="bg-[#faf7f2] rounded-3xl max-w-2xl w-full p-6 sm:p-8 border border-[#ded5c2] shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-[#ded5c2] pb-4">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={plant.imagemUrl || species?.imagemUrl || "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=400&q=80"}
+                      alt={plant.nomePersonalizado}
+                      className="w-12 h-12 rounded-2xl object-cover border border-[#c5b89e]"
+                    />
+                    <div>
+                      <h3 className="font-serif-botanic text-2xl font-bold text-[#1f2e1f]">
+                        {plant.nomePersonalizado}
+                      </h3>
+                      <p className="text-xs text-[#6e5f49] italic font-narrative">
+                        {plant.nomeCientifico || species?.nomeCientifico || "Espécie herbácea"} • Plantada em{" "}
+                        {new Date(plant.dataPlantio).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedEstimatorPlantId(null)}
+                    className="p-1.5 rounded-xl bg-[#eee6d5] hover:bg-[#ded4bf] text-[#4f4330] cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <HarvestEstimatorWidget
+                  dataPlantio={plant.dataPlantio}
+                  species={species}
+                  customPlantName={plant.nomePersonalizado}
+                  onApplyToNotes={(formattedText) => {
+                    const updated = plant.anotacoes ? `${plant.anotacoes}\n\n${formattedText}` : formattedText;
+                    onUpdateNotes(plant.id, updated);
+                  }}
+                  onScheduleHarvestEvent={(est) => {
+                    if (onAddScheduledFertilization) {
+                      onAddScheduledFertilization({
+                        id: `harvest-plan-${Date.now()}`,
+                        userPlantId: plant.id,
+                        plantName: plant.nomePersonalizado,
+                        dataAgendada: est.estimatedHarvestDate,
+                        horaAgendada: "08:30",
+                        tipoAdubo: `Colheita: ${est.targetPart}`,
+                        modoAplicacao: `Colheita na ${est.nearestOptimalLunarWindow.phaseName} (${est.bestHarvestTime})`,
+                        dosagem: est.harvestTechnique,
+                        faseLunarRecomendada: est.idealLunarPhase,
+                        observacoes: `Estimativa calculada pelo Almanaque: ${est.activePrinciplesFocus}`,
+                        status: "Pendente",
+                        criadoEm: new Date().toISOString(),
+                      });
+                    }
+                  }}
+                  defaultExpanded={true}
+                />
+
+                <div className="pt-3 border-t border-[#ded5c2] flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEstimatorPlantId(null)}
+                    className="px-5 py-2 rounded-xl bg-[#284229] hover:bg-[#192f1a] text-xs font-semibold text-[#f7f5ee] cursor-pointer"
+                  >
+                    Fechar Simulador
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

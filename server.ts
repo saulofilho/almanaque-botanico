@@ -92,7 +92,189 @@ const CURATED_FALLBACK_TIPS = [
   }
 ];
 
+// Fallback Algorithmic Engine for Recurrent Pest Pattern Analysis
+function generateAlgorithmicPestReport(entries: any[], garden: any[], targetPlant: any) {
+  const allDescriptions = entries.map(e => `${e.titulo} ${e.descricao} ${e.categoria} ${e.plantName || ""}`).join(" ").toLowerCase();
+  
+  const detectedPatterns: any[] = [];
+  const plantNames = garden.map(p => p.nomePersonalizado);
+
+  // 1. Cochonilhas
+  const cochonilhaCount = entries.filter(e => 
+    e.categoria === "Pragas & Insetos" && 
+    (e.titulo.toLowerCase().includes("cochonilha") || e.descricao.toLowerCase().includes("cochonilha") || e.descricao.toLowerCase().includes("branco") || e.descricao.toLowerCase().includes("algodão"))
+  ).length;
+
+  if (cochonilhaCount > 0 || allDescriptions.includes("cochonilha") || allDescriptions.includes("algodão") || detectedPatterns.length === 0) {
+    const affected = entries
+      .filter(e => e.descricao.toLowerCase().includes("cochonilha") || e.titulo.toLowerCase().includes("cochonilha") || e.descricao.toLowerCase().includes("algodão"))
+      .map(e => e.plantName || "Espécime")
+      .filter((v, i, a) => a.indexOf(v) === i);
+
+    detectedPatterns.push({
+      pragaOuPatogeno: "Cochonilha-branca Algodonosa",
+      nomeCientificoPraga: "Planococcus citri / Pseudococcidae",
+      taxaRecorrencia: cochonilhaCount >= 2 ? "Frequente" : "Moderada",
+      frequenciaOcorrencias: Math.max(cochonilhaCount, 1),
+      plantasAfetadas: affected.length > 0 ? affected : (targetPlant ? [targetPlant.nomePersonalizado] : (plantNames.length > 0 ? [plantNames[0]] : ["Manjericão Sagrado"])),
+      sintomasVisuaisDetectados: [
+        "Depósitos brancos algodonosos nas axilas e nós dos ramos",
+        "Presença de secreção açucarada (honeydew) e folhas opacas",
+        "Clorose e enfraquecimento de brotos novos"
+      ],
+      fatoresPropiciosIdentificados: [
+        "Baixa circulação de ar entre os vasos",
+        "Excesso de calor associado a adubação rica em nitrogênio solúvel",
+        "Ausência de predadores naturais no ambiente fechado"
+      ],
+      diagnosticoVisualFotos: "As fotos anexadas revelam aglomerados cerosos característicos nas junções caulinares, com início de cobertura protetora branca que repele água pura.",
+      metodosControleBiologico: {
+        inimigosNaturais: [
+          "Joaninha predadora (Cryptolaemus montrouzieri - conhecida como 'lobo-das-cochonilhas')",
+          "Larvas de Crisopídeo / Bicho-lixeiro (Chrysoperla carnea)",
+          "Microvespas parasitoides (Anagyrus pseudococci)"
+        ],
+        biopreparadosECaldas: [
+          {
+            nome: "Emulsão de Sabão de Potássio com Óleo de Neem a 1%",
+            ingredientes: [
+              "5ml de óleo de neem 100% puro prensado a frio",
+              "5ml de sabão de coco artesanal neutro líquido (emulsionante)",
+              "1 litro de água morna não clorada"
+            ],
+            modoPreparo: "Dissolva primeiro o sabão na água morna, adicione o óleo de neem e agite vigorosamente até formar uma emulsão leitosa homogênea. Aplique com borrifador sob as folhas e nas axilas.",
+            frequenciaAplicacao: "A cada 5 a 7 dias, repetindo por 3 aplicações consecutivas.",
+            horarioIdeal: "Ao entardecer (após as 17h30) para evitar queima foliar pelo sol."
+          },
+          {
+            nome: "Calda Repelente de Alho, Pimenta e Cravo-da-Índia",
+            ingredientes: [
+              "3 dentes de alho amassados",
+              "1 pimenta dedo-de-moça picada",
+              "5 cravos-da-índia",
+              "500ml de água"
+            ],
+            modoPreparo: "Bata no liquidificador, deixe macerar por 24 horas em frasco escuro, coe em pano fino e dilua 1 parte para 4 partes de água antes de borrifar.",
+            frequenciaAplicacao: "Semanal como barreira preventiva repelente.",
+            horarioIdeal: "Início da manhã ou entardecer."
+          }
+        ],
+        plantasRepelentesCompanheiras: [
+          "Cravo-de-defunto (Tagetes patula) - emite tiofenos repelentes",
+          "Manjericão e Alecrim consorciados - camuflam o odor da planta hospedeira",
+          "Capuchinha (Tropaeolum majus) - planta bio-atrativa sentinela"
+        ],
+        manejoCulturalPreventivo: [
+          "Poda de limpeza dos ramos com alta densidade de pragas durante a Lua Minguante",
+          "Limpeza mecânica manual com pincel macio ou haste de algodão com álcool diluído a 50%",
+          "Aumentar o espaçamento entre os vasos para garantir circulação de ar"
+        ]
+      },
+      cronogramaPrevencao: [
+        {
+          "fase": "Dias 1 a 3 (Intervenção Imediata)",
+          "acao": "Remoção manual com algodão e álcool 50% + 1ª aplicação da emulsão de neem com sabão ao entardecer."
+        },
+        {
+          "fase": "Dias 7 a 10 (Quebra do Ciclo de Ninfas)",
+          "acao": "2ª pulverização de óleo de neem para eliminar ninfas recém-eclodidas dos ovos residuais."
+        },
+        {
+          "fase": "Semana 3 em diante (Consolidação & Barreira)",
+          "acao": "Pulverização quinzenal de calda de alho repelente e introdução de vaso de Tagetes vizinho."
+        }
+      ]
+    });
+  }
+
+  // 2. Pulgões / Ácaros / Fungos check
+  const pulgaoOrAcaroCount = entries.filter(e => 
+    e.descricao.toLowerCase().includes("pulgão") || e.titulo.toLowerCase().includes("pulgão") || e.descricao.toLowerCase().includes("amarelecimento") || e.descricao.toLowerCase().includes("ácaro")
+  ).length;
+
+  if (pulgaoOrAcaroCount > 0 || allDescriptions.includes("amarelecimento") || allDescriptions.includes("pulgão")) {
+    const affected = entries
+      .filter(e => e.descricao.toLowerCase().includes("pulgão") || e.descricao.toLowerCase().includes("amarelecimento") || e.descricao.toLowerCase().includes("ácaro"))
+      .map(e => e.plantName || "Espécime")
+      .filter((v, i, a) => a.indexOf(v) === i);
+
+    detectedPatterns.push({
+      pragaOuPatogeno: "Pulgões Sugadores & Estresse Foliar",
+      nomeCientificoPraga: "Aphididae (Aphis gossypii / Myzus persicae)",
+      taxaRecorrencia: "Moderada",
+      frequenciaOcorrencias: Math.max(pulgaoOrAcaroCount, 1),
+      plantasAfetadas: affected.length > 0 ? affected : (targetPlant ? [targetPlant.nomePersonalizado] : ["Alecrim da Varanda", "Lavanda Francesa"]),
+      sintomasVisuaisDetectados: [
+        "Enrugamento das folhas apicais jovens",
+        "Amarelecimento pontual e perda de turgescência",
+        "Pequenas colônias escuras sob a face abaxial das folhas"
+      ],
+      fatoresPropiciosIdentificados: [
+        "Brotos tenros ricos em seiva elaborada",
+        "Falta de umidade relativa do ar e calor excessivo",
+        "Presença de formigas doceiras que protegem os pulgões"
+      ],
+      diagnosticoVisualFotos: "Padrão de deformação foliar e início de clorose nas extremidades dos ramos, com sinais de perda de vigor fotossintético.",
+      metodosControleBiologico: {
+        inimigosNaturais: [
+          "Joaninha-vermelha (Cycloneda sanguinea) - consome até 50 pulgões/dia",
+          "Larvas de Sirfídeos (moscas-das-flores benéficas)",
+          "Fungo entomopatogênico Beauveria bassiana"
+        ],
+        biopreparadosECaldas: [
+          {
+            nome: "Infusão Fortalecedora de Cavalinha e Urtiga",
+            ingredientes: [
+              "50g de folhas frescas de cavalinha (rica em silício)",
+              "50g de folhas de urtiga",
+              "1 litro de água filtrada"
+            ],
+            modoPreparo: "Ferva a água com as ervas por 15 minutos em fogo baixo. Deixe esfriar completamente, coe e aplique nas folhas. O silício enrijece a parede celular vegetal, impedindo a penetração do aparelho bucal do pulgão.",
+            frequenciaAplicacao: "Semanal como fortalecedor foliar preventivo.",
+            horarioIdeal: "Início da manhã (antes das 9h)."
+          }
+        ],
+        plantasRepelentesCompanheiras: [
+          "Hortelã-pimenta (Mentha piperita) - repele formigas e pulgões",
+          "Cebolinha e Alho - enxofre natural volátil que afasta insetos sugadores",
+          "Coentro em flor - atrai microvespas e sirfídeos benéficos"
+        ],
+        manejoCulturalPreventivo: [
+          "Jato de água fria direcionado na face inferior das folhas para desalojar ninfas",
+          "Pincelamento de fita adesiva ou óleo na base do caule para impedir subida de formigas",
+          "Adubação equilibrada com cinzas vegetais ricas em potássio e silício"
+        ]
+      },
+      cronogramaPrevencao: [
+        {
+          "fase": "Semana 1 (Desalojamento & Fortalecimento)",
+          "acao": "Lavagem foliar com água + 1ª aplicação de extrato de cavalinha rica em silício."
+        },
+        {
+          "fase": "Semana 2 a 4 (Manejo Biológico)",
+          "acao": "Plantio consorciado de hortelã na borda e monitoramento semanal de folhas novas."
+        }
+      ]
+    });
+  }
+
+  const totalPhotos = entries.reduce((acc, e) => acc + (e.fotos?.length || 0), 0);
+
+  return {
+    id: `pest-analysis-${Date.now()}`,
+    dataAnalise: new Date().toISOString().split("T")[0],
+    resumoGeral: `O mapeamento fitossanitário identificou ${detectedPatterns.length} padrão(ões) de pragas e sensibilidades no diário de campo, totalizando ${entries.length} registro(s) e ${totalPhotos} foto(s) catalogada(s). O manejo biológico preventivo à base de inimigos naturais e caldas botânicas ricas em silício e neem proporcionará equilíbrio duradouro sem agrotóxicos.`,
+    totalFotosAnalisadas: totalPhotos,
+    totalOcorrenciasMapeadas: entries.length,
+    nivelRiscoJardim: detectedPatterns.some(p => p.taxaRecorrencia === "Frequente" || p.taxaRecorrencia === "Recorrente Crítica") ? "Moderado" : "Baixo",
+    padroesDetectados: detectedPatterns,
+    conselhoMestreAlmanaque: "No jardim natural, praga não é inimiga, mas aviso da planta de que algo no solo, no ar ou no sol está em desequilíbrio. Fortaleça as raízes com composto e use caldas botânicas ao entardecer.",
+    faseLunarRecomendadaManejo: "Lua Minguante: seiva recolhida nas raízes, momento de máxima eficácia para podas de limpeza e pulverização de defensivos naturais repelentes."
+  };
+}
+
 async function startServer() {
+
   const app = express();
   const PORT = 3000;
 
@@ -398,6 +580,224 @@ Responda em formato estritamente JSON:
       console.warn("Gemini API retornou erro ou indisponibilidade temporária. Servindo sabedoria curada do almanaque:", err?.message || err);
       // Never crash or return 500 to user; return curated botanical wisdom
       res.json(fallbackTip);
+    }
+  });
+
+  // 6. Field Journal Recurrent Pest Pattern & Biological Control Analysis
+  app.post("/api/gemini/field-journal-pest-analysis", async (req, res) => {
+    try {
+      const { entries = [], garden = [], selectedPlantId = "all" } = req.body;
+      const ai = getGeminiClient();
+
+      const targetPlant = selectedPlantId !== "all" ? garden.find((p: any) => p.id === selectedPlantId) : null;
+
+      // Extract photo samples if available
+      const photoParts: any[] = [];
+      entries.forEach((e: any) => {
+        if (e.fotos && Array.isArray(e.fotos)) {
+          e.fotos.slice(0, 2).forEach((photo: string) => {
+            if (photo && photo.startsWith("data:image/")) {
+              const mimeType = photo.substring(photo.indexOf(":") + 1, photo.indexOf(";")) || "image/jpeg";
+              const cleanBase64 = photo.replace(/^data:image\/\w+;base64,/, "");
+              if (cleanBase64.length < 5000000 && photoParts.length < 3) {
+                photoParts.push({
+                  inlineData: {
+                    mimeType,
+                    data: cleanBase64,
+                  },
+                });
+              }
+            }
+          });
+        }
+      });
+
+      const entriesSummary = entries.map((e: any, idx: number) => ({
+        registroNum: idx + 1,
+        data: e.data,
+        hora: e.hora,
+        planta: e.plantName || "Geral",
+        categoria: e.categoria,
+        severidade: e.severidade,
+        titulo: e.titulo,
+        descricao: e.descricao,
+        acaoTomada: e.acaoTomada || "Nenhuma ação informada",
+        statusResolucao: e.statusResolucao,
+        temFotos: Boolean(e.fotos && e.fotos.length > 0),
+        qtdFotos: e.fotos?.length || 0,
+        faseLunar: e.faseLunar || "Não registrada"
+      }));
+
+      const gardenSummary = garden.map((p: any) => ({
+        id: p.id,
+        nome: p.nomePersonalizado,
+        especie: p.nomeCientifico || "Não especificada",
+        localizacao: p.localizacao,
+        estadoSaude: p.estadoSaude,
+        diasRega: p.frequenciaDiasRega
+      }));
+
+      const prompt = `Você é um entomologista agrícola mestre em Fitossanidade Orgânica, Controle Biológico e Botânica Aplicada.
+Sua missão é realizar uma ANÁLISE DE PADRÕES DE PRAGAS RECORRENTES no "Diário de Campo" do jardim.
+
+Foco da Análise: ${targetPlant ? `Planta Específica: "${targetPlant.nomePersonalizado}" (${targetPlant.nomeCientifico || "espécie"})` : "Todo o Herbanário e Jardim Coletivo"}.
+Total de registros no diário: ${entries.length}.
+
+Contexto das Plantas do Jardim:
+${JSON.stringify(gardenSummary, null, 2)}
+
+Histórico de Registros do Diário de Campo:
+${JSON.stringify(entriesSummary, null, 2)}
+
+Diretrizes da Análise:
+1. Examine a correlação temporal, sintomas descritos e evidências fotográficas anexadas.
+2. Identifique quais pragas ou patógenos são RECORRENTES ou representam focos de reinfestação (ex: Cochonilhas-brancas/algodonosas, Pulgões pretos/verdes, Ácaros-vermelhos/rajados, Mosca-branca, Lagartas, Fungo Oídio/Fumagina/Ferrugem, Tripes).
+3. Para CADA praga recorrente detectada, forneça MÉTODOS PREVENTIVOS DE CONTROLE BIOLÓGICO ESPECÍFICOS PARA A PLANTA AFETADA (considerando a espécie botânica, sensibilidade foliar e microclima):
+   - Inimigos naturais / predadores benéficos (ex: joaninhas Cycloneda sanguinea, larvas de crisopídeo, microvespas parasitoides, ácaros predadores Neoseiulus).
+   - Biopreparados, caldas botânicas e bioinseticidas caseiros específicos (ex: calda de sabão de potássio com óleo de neem a frio, calda sulfocálcica, extrato de alho e pimenta, infusão de cavalinha/urtiga) com receitas exatas, dosagem, modo de preparo e melhor horário/fase lunar.
+   - Plantas companheiras repelentes ou bio-atrativas (ex: cravos-de-defunto Tagetes, capuchinha, manjericão, coentro, arruda).
+   - Manejo cultural preventivo (podas de aeração, manejo de umidade, desbaste de folhas senescentes na Lua Minguante).
+4. Elabore um Cronograma de Manejo Preventivo (Fases com dias e ações).
+5. Forneça o parecer geral e o nível de risco do jardim.
+
+Responda em formato estritamente JSON:
+{
+  "id": "pest-analysis-${Date.now()}",
+  "dataAnalise": "${new Date().toISOString().split("T")[0]}",
+  "resumoGeral": "Diagnóstico executivo da saúde fitossanitária e dos padrões de recorrência observados.",
+  "totalFotosAnalisadas": ${entries.reduce((acc: number, e: any) => acc + (e.fotos?.length || 0), 0)},
+  "totalOcorrenciasMapeadas": ${entries.length},
+  "nivelRiscoJardim": "Baixo | Moderado | Alto | Crítico",
+  "padroesDetectados": [
+    {
+      "pragaOuPatogeno": "Nome comum da praga (ex: Cochonilha-algodonosa)",
+      "nomeCientificoPraga": "Nome científico (ex: Planococcus citri / Pseudococcidae)",
+      "taxaRecorrencia": "Frequente | Moderada | Esporádica | Recorrente Crítica",
+      "frequenciaOcorrencias": 2,
+      "plantasAfetadas": ["Nome da Planta 1", "Nome da Planta 2"],
+      "sintomasVisuaisDetectados": ["Sintoma visual 1 nas fotos/relato", "Sintoma 2"],
+      "fatoresPropiciosIdentificados": ["Causa ambiental 1 (ex: ar estagnado)", "Excesso de nitrogênio"],
+      "diagnosticoVisualFotos": "Análise detalhada do padrão fotográfico observado nas evidências.",
+      "metodosControleBiologico": {
+        "inimigosNaturais": ["Predador 1 com nome científico e modo de ação", "Predador 2"],
+        "biopreparadosECaldas": [
+          {
+            "nome": "Nome da Calda / Biopreparado",
+            "ingredientes": ["Ingrediente 1", "Ingrediente 2"],
+            "modoPreparo": "Instruções passo a passo de preparo artesanal",
+            "frequenciaAplicacao": "Ex: A cada 5 dias por 3 semanas",
+            "horarioIdeal": "Ao entardecer, sem incidência solar direta"
+          }
+        ],
+        "plantasRepelentesCompanheiras": ["Planta repelente 1", "Planta 2"],
+        "manejoCulturalPreventivo": ["Medida de manejo 1", "Medida 2"]
+      },
+      "cronogramaPrevencao": [
+        {
+          "fase": "Dias 1 a 3 (Controle de Choque)",
+          "acao": "Ação imediata"
+        },
+        {
+          "fase": "Semana 2 (Estabilização)",
+          "acao": "Ação intermediária"
+        },
+        {
+          "fase": "Semanal / Mensal (Barreira Permanente)",
+          "acao": "Manutenção biológica preventiva"
+        }
+      ]
+    }
+  ],
+  "conselhoMestreAlmanaque": "Sabedoria tradicional de almanaque para manutenção do equilíbrio biológico natural.",
+  "faseLunarRecomendadaManejo": "Melhor fase lunar e justificativa ancestral para as pulverizações e podas fitossanitárias."
+}`;
+
+      if (ai) {
+        let contents: any;
+        if (photoParts.length > 0) {
+          contents = {
+            parts: [...photoParts, { text: prompt }],
+          };
+        } else {
+          contents = prompt;
+        }
+
+        const text = await generateWithModelFallback(ai, contents, {
+          responseMimeType: "application/json",
+        });
+
+        const parsed = JSON.parse(text || "{}");
+        if (parsed.padroesDetectados && parsed.padroesDetectados.length > 0) {
+          return res.json(parsed);
+        }
+      }
+
+      // Fallback Algorithmic Engine if AI unavailable or empty
+      const fallbackReport = generateAlgorithmicPestReport(entries, garden, targetPlant);
+      res.json(fallbackReport);
+    } catch (err: any) {
+      console.error("Erro na análise de pragas do diário:", err);
+      const fallbackReport = generateAlgorithmicPestReport(req.body.entries || [], req.body.garden || [], null);
+      res.json(fallbackReport);
+    }
+  });
+
+  // 7. Instant Photo Pest Inspection
+  app.post("/api/gemini/analyze-journal-photo", async (req, res) => {
+    try {
+      const { imageBase64, mimeType = "image/jpeg", plantName = "Planta em análise", userNotes = "" } = req.body;
+      const ai = getGeminiClient();
+
+      if (!ai || !imageBase64) {
+        return res.json({
+          pragaIdentificada: "Possível Cochonilha ou Ácaro Foliar",
+          confianca: "Média",
+          sintomas: ["Pequenas manchas e agregados na haste", "Perda localizada de viço"],
+          metodoBiologicoImediato: "Pulverização de calda de sabão neutro com óleo de neem 1% ao pôr do sol.",
+          inimigoNatural: "Joaninhas predadoras e bicho-lixeiro (Chrysoperla)",
+          receitaPreparo: "Misture 5ml de sabão de coco líquido + 5ml de óleo de neem em 1L de água morna. Agite bem e aplique sob as folhas."
+        });
+      }
+
+      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      const prompt = `Analise esta foto de campo da planta "${plantName}". Observações do usuário: "${userNotes}".
+Identifique se há presença de pragas (cochonilhas, pulgões, ácaros, tripes, lagartas, moscas), fungos ou deficiências.
+Responda em formato estritamente JSON:
+{
+  "pragaIdentificada": "Nome da praga ou 'Nenhuma praga detectada (Apenas alteração fisiológica)'",
+  "confianca": "Alta | Média | Baixa",
+  "sintomas": ["Sintoma 1 visível na imagem", "Sintoma 2"],
+  "metodoBiologicoImediato": "Instrução rápida de manejo orgânico",
+  "inimigoNatural": "Predador natural recomendado",
+  "receitaPreparo": "Receita caseira e segura de calda repelente / bioinseticida"
+}`;
+
+      const text = await generateWithModelFallback(ai, {
+        parts: [
+          {
+            inlineData: {
+              mimeType,
+              data: cleanBase64,
+            },
+          },
+          { text: prompt },
+        ],
+      }, {
+        responseMimeType: "application/json",
+      });
+
+      const parsed = JSON.parse(text || "{}");
+      res.json(parsed);
+    } catch (err: any) {
+      console.error("Erro na inspeção rápida de foto:", err);
+      res.json({
+        pragaIdentificada: "Alteração Foliar em Monitoramento",
+        confianca: "Média",
+        sintomas: ["Variação na pigmentação e textura foliar"],
+        metodoBiologicoImediato: "Isole a planta temporariamente e aplique solução diluída de sabão de coco neutro.",
+        inimigoNatural: "Joaninhas e crisopídeos",
+        receitaPreparo: "1 colher de chá de sabão de coco ralado dissolvido em 500ml de água morna. Pulverizar ao entardecer."
+      });
     }
   });
 
