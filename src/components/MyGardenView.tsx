@@ -11,17 +11,19 @@ import {
   Edit3, 
   AlertCircle, 
   Sparkles, 
-  BookOpen,
-  X,
-  Scissors,
-  Activity,
-  Layers,
-  Ruler,
-  Printer,
-  Camera,
-  FileText,
-  Award,
-  TrendingUp
+  BookOpen, 
+  X, 
+  Scissors, 
+  Activity, 
+  Layers, 
+  Ruler, 
+  Printer, 
+  Camera, 
+  FileText, 
+  Award, 
+  TrendingUp,
+  Palette,
+  Sun
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { UserPlant, PlantEntry, FieldJournalEntry, ScheduledFertilization } from "../types";
@@ -34,6 +36,7 @@ import { PlantGrowthStageIndicator, PlantGrowthImageBadge } from "./PlantGrowthS
 import { PrintablePlantCards } from "./PrintablePlantCards";
 import { FieldJournalView } from "./FieldJournalView";
 import { HarvestEstimatorWidget } from "./HarvestEstimatorWidget";
+import { SeasonalGardenMap } from "./SeasonalGardenMap";
 import { getPlantHarvestRecommendation } from "../utils/harvestPlanner";
 
 interface MyGardenViewProps {
@@ -79,7 +82,7 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
   const [editingPlantId, setEditingPlantId] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState("");
   const [wateringFilter, setWateringFilter] = useState<"all" | "urgent" | "ok">("all");
-  const [activeSubView, setActiveSubView] = useState<"plantas" | "diario" | "colheitas" | "planejador" | "adubacao" | "vitalidade" | "eficiencia" | "cartoes">("plantas");
+  const [activeSubView, setActiveSubView] = useState<"plantas" | "diario" | "colheitas" | "mapaSazonal" | "planejador" | "adubacao" | "vitalidade" | "eficiencia" | "cartoes">("plantas");
   const [selectedPrintPlantId, setSelectedPrintPlantId] = useState<string | null>(null);
   const [selectedJournalPlantId, setSelectedJournalPlantId] = useState<string | null>(null);
   const [selectedFertilizationPlantId, setSelectedFertilizationPlantId] = useState<string | null>(null);
@@ -363,6 +366,23 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveSubView("mapaSazonal")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            activeSubView === "mapaSazonal"
+              ? "bg-[#284229] text-[#f7f4ee] shadow-xs"
+              : "text-[#544834] hover:bg-[#e4dcce]"
+          }`}
+        >
+          <Palette className={`w-4 h-4 ${activeSubView === "mapaSazonal" ? "text-[#a4d495]" : "text-[#7a6b54]"}`} />
+          <span>Mapinha 4 Estações</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            activeSubView === "mapaSazonal" ? "bg-[#a4d495] text-[#1a331c]" : "bg-[#ded4be] text-[#544834]"
+          }`}>
+            Novo
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveSubView("planejador")}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
             activeSubView === "planejador"
@@ -511,6 +531,35 @@ export const MyGardenView: React.FC<MyGardenViewProps> = ({
           allSpecies={allSpecies}
           onSelectPlantModal={onSelectPlantModal}
           onUpdateNotes={onUpdateNotes}
+        />
+      )}
+
+      {/* SubView: Mapinha 4 Estações & O Que Plantar */}
+      {activeSubView === "mapaSazonal" && (
+        <SeasonalGardenMap
+          allSpecies={allSpecies}
+          garden={garden}
+          onAddToGarden={(plant) => {
+            onAddNewCustomPlant({
+              nomePersonalizado: plant.nomePopular,
+              especieId: plant.id,
+              nomeCientifico: plant.nomeCientifico,
+              dataPlantio: new Date().toISOString().split("T")[0],
+              ultimaRega: new Date().toISOString().split("T")[0],
+              frequenciaDiasRega: plant.frequenciaRega.includes("Diária") ? 1 : 3,
+              localizacao: "Canteiro das 4 Estações",
+              estadoSaude: "Vigorosa",
+              anotacoes: `Plantado a partir do Mapa 4 Estações. Floresce na época ideal!`,
+              imagemUrl: plant.imagemUrl,
+            });
+            confetti({
+              particleCount: 35,
+              spread: 60,
+              origin: { y: 0.6 },
+              colors: ["#68a357", "#d4bb6e", "#375939"],
+            });
+          }}
+          onSelectPlantModal={onSelectPlantModal}
         />
       )}
 

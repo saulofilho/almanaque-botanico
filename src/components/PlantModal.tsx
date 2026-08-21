@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   X, 
   Sun, 
@@ -13,11 +13,14 @@ import {
   Printer, 
   Compass,
   BookmarkPlus,
-  Check
+  Check,
+  Palette,
+  Flower2
 } from "lucide-react";
 import { PlantEntry, UserPlant } from "../types";
 import { AdaptiveCareTips } from "./AdaptiveCareTips";
 import { HarvestEstimatorWidget } from "./HarvestEstimatorWidget";
+import { getPlantSeasonalProfile, SEASON_METADATA, SeasonKey } from "../data/seasonalPlantData";
 
 interface PlantModalProps {
   plant: PlantEntry | null;
@@ -246,6 +249,94 @@ export const PlantModal: React.FC<PlantModalProps> = ({
             onWaterPlant={onWaterPlant}
             onUpdatePlantHealth={onUpdatePlantHealth}
           />
+
+          {/* 4 Seasons Phenology & Color Evolution Card */}
+          {(() => {
+            const seasonalProfile = getPlantSeasonalProfile(plant, plant.nomePopular);
+            return (
+              <div className="p-5 rounded-2xl bg-[#f5efe3] border border-[#ded3be] space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#e2d6c1] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-[#376b3a]" />
+                    <h3 className="font-cinzel text-sm font-bold uppercase tracking-wider text-[#3c4a37]">
+                      Comportamento Sazonal & Fenologia das 4 Estações
+                    </h3>
+                  </div>
+                  <span className="text-[11px] font-semibold text-[#6e5f49]">
+                    Pico de Floração: <strong className="text-[#2b4c27] capitalize">{SEASON_METADATA[seasonalProfile.estacaoPicoFloracao].name}</strong>
+                  </span>
+                </div>
+
+                {/* 4 Seasons Color Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {(["primavera", "verao", "outono", "inverno"] as SeasonKey[]).map((sk) => {
+                    const app = seasonalProfile.seasons[sk];
+                    const meta = SEASON_METADATA[sk];
+
+                    return (
+                      <div
+                        key={sk}
+                        className="p-3 rounded-xl bg-[#ffffff] border border-[#ded5c2] shadow-2xs space-y-1.5 flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#1f2e1f] capitalize flex items-center gap-1">
+                            <span>{meta.icon}</span>
+                            <span>{meta.name}</span>
+                          </span>
+                          {app.hasFlowers && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#fce7f3] text-[#be185d]">
+                              🌸 Flor
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Color swatch */}
+                        <div className="flex items-center gap-1.5 py-1">
+                          <span
+                            className="w-4 h-4 rounded-full border border-black/20 shadow-inner"
+                            style={{ backgroundColor: app.foliageHex }}
+                            title={`Folhagem: ${app.foliageColorName}`}
+                          ></span>
+                          <span className="text-[10px] text-[#4d402e] font-medium truncate">
+                            {app.foliageColorName}
+                          </span>
+                        </div>
+
+                        <span className="text-[10px] font-semibold text-[#2b4c27] block">
+                          {app.stageLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Why it changes color explanation */}
+                <div className="text-xs text-[#544834] font-narrative bg-[#faf7f2] p-3 rounded-xl border border-[#e8ded0] space-y-1">
+                  <div className="font-bold text-[#354533] flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-[#3b6637]" />
+                    <span>Por que esta planta muda ao longo do ano?</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    {seasonalProfile.porQueMudaDeCor}
+                  </p>
+                </div>
+
+                {/* When to plant */}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#544834] pt-1">
+                  <div>
+                    <strong className="text-[#354533]">Época Ideal de Plantio:</strong>{" "}
+                    {seasonalProfile.quandoPlantarDescricao}
+                  </div>
+                  {seasonalProfile.plantasCompanheiras.length > 0 && (
+                    <div>
+                      <strong className="text-[#354533]">Companheiras:</strong>{" "}
+                      {seasonalProfile.plantasCompanheiras.join(", ")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Phytotherapy & Medicinal Benefits */}
           {plant.usosFitoterapicos && plant.usosFitoterapicos.length > 0 && (
